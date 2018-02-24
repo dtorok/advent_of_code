@@ -1,4 +1,4 @@
-module Test exposing (Test, test)
+module TestRun exposing (Test, test)
 
 import List
 import Html exposing (..)

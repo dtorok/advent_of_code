@@ -1,10 +1,10 @@
 module Day2 exposing (part1, part2)
 
-import Test
+import TestRun
 import Regex
 
 
-part1 : Test.Test
+part1 : TestRun.Test
 part1 =
   { title = "Day 2: Corruption Checksum - Part 1"
   , solver = solver calcMaxDiff
@@ -14,9 +14,9 @@ part1 =
     ]
   }
 
-part2 : Test.Test
+part2 : TestRun.Test
 part2 =
-  { title = "Day 2: Corruption Checksum - Part 1"
+  { title = "Day 2: Corruption Checksum - Part 2"
   , solver = solver calcEvenlyDividable
   , testCases =
     [ ( smallMatrixPart2, "9")
