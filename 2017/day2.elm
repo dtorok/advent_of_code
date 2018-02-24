@@ -56,7 +56,7 @@ tryDivide x y =
       Nothing
 
 calcEvenlyDividable : List Int -> Int
-calcEvenlyDividable l = Debug.log ("list: " ++ (toString l)) <|
+calcEvenlyDividable l =
   case l of
     x :: xs ->
       let results = xs
