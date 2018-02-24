@@ -1,4 +1,4 @@
-module Example exposing (..)
+module TestDays exposing (..)
 
 import Expect exposing (Expectation)
 import Test exposing (Test, test, describe)
