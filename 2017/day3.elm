@@ -1,9 +1,9 @@
 module Day3 exposing (part1, part2)
 
-import Test
+import TestRun
 import Dict exposing (Dict)
 
-part1 : Test.Test
+part1 : TestRun.Test
 part1 =
   { title = "Day 3: Spiral Memory - Part 1"
   , solver = solver stepNumberUpdater calcDistance
@@ -16,7 +16,7 @@ part1 =
     ]
   }
 
-part2 : Test.Test
+part2 : TestRun.Test
 part2 =
   { title = "Day 3: Spiral Memory - Part 2"
   , solver = solver neighborNumberUpdater getNumber

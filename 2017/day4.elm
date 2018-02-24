@@ -3,10 +3,10 @@ module Day4 exposing (part1, part2)
 import Regex
 import Set exposing (Set)
 
-import Test
+import TestRun
 
 
-part1 : Test.Test
+part1 : TestRun.Test
 part1 =
   { title = "Day 4: High-Entropy Passphrases - Part 1"
   , solver = solver identity
@@ -16,7 +16,7 @@ part1 =
     ]
   }
 
-part2 : Test.Test
+part2 : TestRun.Test
 part2 =
   { title = "Day 4: High-Entropy Passphrases - Part 2"
   , solver = solver sortLetters
