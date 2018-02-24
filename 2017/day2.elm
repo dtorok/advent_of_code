@@ -16,7 +16,7 @@ part1 =
 
 part2 : TestRun.Test
 part2 =
-  { title = "Day 2: Corruption Checksum - Part 1"
+  { title = "Day 2: Corruption Checksum - Part 2"
   , solver = solver calcEvenlyDividable
   , testCases =
     [ ( smallMatrixPart2, "9")
