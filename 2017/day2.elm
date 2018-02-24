@@ -7,9 +7,9 @@ import Regex
 part1 : Test.Test
 part1 =
   { title = "Day 2: Corruption Checksum - Part 1"
-  , solver = solver
+  , solver = solver calcMaxDiff
   , testCases =
-    [ ( smallMatrix, "18")
+    [ ( smallMatrixPart1, "18")
     , ( bigMatrix, "45158")
     ]
   }
@@ -17,22 +17,21 @@ part1 =
 part2 : Test.Test
 part2 =
   { title = "Day 2: Corruption Checksum - Part 1"
-  , solver = solver
+  , solver = solver calcEvenlyDividable
   , testCases =
-    [ ( """5 1 9 5
-           7 5 3
-           2 4 6 8""", "18")
+    [ ( smallMatrixPart2, "9")
+    , ( bigMatrix, "294")
     ]
   }
 
 
--- HELPERS
+-- SOLVERS
 ----------
 
-solver : String -> String
-solver input = input
+solver : (List Int -> Int) -> String -> String
+solver calc input = input
   |> parseMatrix
-  |> List.map calcMaxDiff
+  |> List.map calc
   |> List.sum
   |> toString
 
@@ -42,10 +41,35 @@ calcMaxDiff l =
     max = (List.maximum l) |> Maybe.withDefault 0
     min = (List.minimum l) |> Maybe.withDefault 0
   in
-    Debug.log ("list: " ++ (toString l)) <|
-    Debug.log ("max: " ++ (toString max)) <|
-    Debug.log ("min: " ++ (toString min)) <|
     max - min
+
+tryDivide : Int -> Int -> Maybe Int
+tryDivide x y =
+  let
+    (s, b) =
+      if x < y then (x, y)
+      else (y, x)
+  in
+    if b % s == 0 then
+      Just (b // s)
+    else
+      Nothing
+
+calcEvenlyDividable : List Int -> Int
+calcEvenlyDividable l = Debug.log ("list: " ++ (toString l)) <|
+  case l of
+    x :: xs ->
+      let results = xs
+          |> List.filterMap (tryDivide x)
+      in
+        case results of
+          x :: xs -> x
+          [] -> calcEvenlyDividable xs
+    [] -> -1 -- shouldn't happen by description
+
+
+-- PARSER
+---------
 
 parseCell : String -> Int
 parseCell cell = cell
@@ -60,14 +84,26 @@ parseRow row = row
 
 parseMatrix : String -> List (List Int)
 parseMatrix matrix = matrix
+  |> String.trim
   |> String.split "\n"
   |> List.map parseRow
 
-smallMatrix : String
-smallMatrix = """
+
+-- TEST DATA
+------------
+
+smallMatrixPart1 : String
+smallMatrixPart1 = """
 5 1 9 5
 7 5 3
 2 4 6 8
+"""
+
+smallMatrixPart2 : String
+smallMatrixPart2 = """
+5 9 2 8
+9 4 7 3
+3 8 6 5
 """
 
 bigMatrix : String
