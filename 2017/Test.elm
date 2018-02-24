@@ -10,8 +10,6 @@ type alias Test =
   , testCases: List (String, String)
   }
 
--- test : String -> (String -> String) -> List (String, String) -> Html a
--- test title f data =
 test : Test -> Html a
 test t =
   let
