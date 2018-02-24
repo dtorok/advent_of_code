@@ -1,17 +1,27 @@
-module Day3 exposing (part1)
+module Day3 exposing (part1, part2)
 
 import Test
+import Dict exposing (Dict)
 
 part1 : Test.Test
 part1 =
   { title = "Day 3: Spiral Memory - Part 1"
-  , solver = solver
+  , solver = solver stepNumberUpdater calcDistance
   , testCases =
     [ ( "1", "0")
     , ( "12", "3")
     , ( "23", "2")
     , ( "1024", "31")
     , ( "312051", "430")
+    ]
+  }
+
+part2 : Test.Test
+part2 =
+  { title = "Day 3: Spiral Memory - Part 2"
+  , solver = solver neighborNumberUpdater getNumber
+  , testCases =
+    [ ( "312051", "312453")
     ]
   }
 
@@ -33,8 +43,14 @@ type alias Model =
   , step : Int
 }
 
-solver : String -> String
-solver input =
+type alias Cache =
+  Dict String Model
+
+type alias NumberUpdater =
+  (Cache -> Model -> Model)
+
+solver : NumberUpdater -> (Model -> Model -> Int) -> String -> String
+solver numberUpdater transformer input =
   let
     num = String.toInt input |> Result.withDefault 0
     initModel =
@@ -45,17 +61,61 @@ solver input =
       , dir = Right
       , number = 1
     }
-    endModel = walkThrough initModel num
-    distance = calcDistance initModel endModel
+    cache = Dict.empty |> addToCache initModel
+    endModel = walkThrough numberUpdater cache initModel num
+    result = transformer initModel endModel
   in
-    toString distance
+    toString result
 
-walkThrough : Model -> Int -> Model
-walkThrough model target =
-  if model.number == target then
+stepNumberUpdater : Cache -> Model -> Model
+stepNumberUpdater cache m =
+    { m | number = m.number + 1 }
+
+neighborNumberUpdater : Cache -> Model -> Model
+neighborNumberUpdater cache m =
+  let
+    dirs =
+      [ (  1,  0 )
+      , (  1, -1 )
+      , (  0, -1 )
+      , ( -1, -1 )
+      , ( -1,  0 )
+      , ( -1,  1 )
+      , (  0,  1 )
+      , (  1,  1 ) ]
+
+    neighborNumberSum = dirs -- directions
+      |> List.map (\(vx, vy) -> (m.x + vx, m.y + vy)) -- coords
+      |> List.map (\(x, y) -> makeCacheKey x y) -- cache keys
+      |> List.filterMap (\key -> Dict.get key cache) -- neighbor models
+      |> List.map (\model -> model.number) -- neighbor models' numbers
+      |> List.sum -- sum of neighbor models' numbers
+  in
+    { m | number = neighborNumberSum }
+
+walkThrough : NumberUpdater -> Cache -> Model -> Int -> Model
+walkThrough numberUpdater cache model target =
+  if model.number >= target then
     model
   else
-    walkThrough (update model) target
+    let
+      newModel = model
+        |> update
+        |> numberUpdater cache
+      key = makeCacheKey newModel.x newModel.y
+      newCache = addToCache newModel cache
+    in
+      walkThrough numberUpdater newCache newModel target
+
+makeCacheKey : Int -> Int -> String
+makeCacheKey x y = (toString x) ++ "," ++ (toString y)
+
+addToCache : Model -> Cache -> Cache
+addToCache model cache =
+  let
+    key = makeCacheKey model.x model.y
+  in
+    Dict.insert key model cache
 
 update : Model -> Model
 update m =
@@ -106,15 +166,18 @@ update m =
               , dir = Up
               , round = m.round + 1 }
   in
-    { newModel | number = newModel.number + 1 }
+    newModel
 
 calcDistance : Model -> Model -> Int
-calcDistance mA mB =
+calcDistance m0 m1 =
   let
-    dX = abs (mA.x - mB.x)
-    dY = abs (mA.y - mB.y)
+    dX = abs (m0.x - m1.x)
+    dY = abs (m0.y - m1.y)
   in
     dX + dY
+
+getNumber : Model -> Model -> Int
+getNumber m0 m1 = m1.number
 
 abs : Int -> Int
 abs a = if a >= 0 then a else (-a)

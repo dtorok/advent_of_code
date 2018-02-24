@@ -11,6 +11,7 @@ main : Html msg
 main = div []
   [ h1 [] [ text "Advent of code 2017" ]
   , Test.test Day3.part1
+  , Test.test Day3.part2
   , Test.test Day2.part1
   , Test.test Day2.part2
   , Test.test Day1.part1
