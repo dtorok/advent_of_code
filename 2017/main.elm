@@ -7,10 +7,13 @@ import Day1
 import Day2
 import Day3
 import Day4
+import Day5
 
 main : Html msg
 main = div []
   [ h1 [] [ text "Advent of code 2017" ]
+  , TestRun.test Day5.part1
+  , TestRun.test Day5.part2
   , TestRun.test Day4.part1
   , TestRun.test Day4.part2
   , TestRun.test Day3.part1
