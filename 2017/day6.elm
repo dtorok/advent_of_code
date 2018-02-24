@@ -1,49 +1,66 @@
-module Day6 exposing (part1)
+module Day6 exposing (part1, part2)
 
 import TestRun
 import Regex
-import Set exposing (Set)
+import Dict exposing (Dict)
 import Array exposing (Array)
 
 part1 : TestRun.Test
 part1 =
   { title = "Day 6: Memory Reallocation - Part 1"
-  , solver = solver
+  , solver = solver steps
   , testCases =
     [ ( smallInput, "5")
     , ( bigInput, "14029")
     ]
   }
 
+part2 : TestRun.Test
+part2 =
+  { title = "Day 6: Memory Reallocation - Part 2"
+  , solver = solver loopSize
+  , testCases =
+    [ ( smallInput, "4")
+    , ( bigInput, "2765")
+    ]
+  }
+
 
 -- SOLVER
 ---------
-solver : String -> String
-solver input = input
+solver : ((Int, Int) -> Int) -> String -> String
+solver resultTransformer input = input
   |> parseBlocks -- Array Int
-  |> runRedistribution 0 Set.empty -- Int
+  |> runRedistribution 0 Dict.empty -- (Int, Int)
+  |> resultTransformer
   |> toString
+
+steps : (Int, Int) -> Int
+steps (cachedCounter, counter) = counter
+
+loopSize : (Int, Int) -> Int
+loopSize (cachedCounter, counter) = counter - cachedCounter
 
 
 -- HELPERS
 ----------
-runRedistribution : Int -> Set String -> Array Int -> Int
+runRedistribution : Int -> Dict String Int -> Array Int -> (Int, Int)
 runRedistribution counter cache blocks =
-  if Set.member (toString blocks) cache then
-    counter
-  else
-    let
-      (fullPos, fullValue) = findFullestBlock blocks
-      newBlocks =
-        redistribute
-          (fullPos + 1)
-          fullValue
-          (Array.set fullPos 0 blocks)
-    in
-      runRedistribution
-        (counter + 1)
-        (Set.insert (toString blocks) cache)
-        newBlocks
+  case Dict.get (toString blocks) cache of
+    Just cachedCounter -> (cachedCounter, counter)
+    Nothing ->
+      let
+        (fullPos, fullValue) = findFullestBlock blocks
+        newBlocks =
+          redistribute
+            (fullPos + 1)
+            fullValue
+            (Array.set fullPos 0 blocks)
+      in
+        runRedistribution
+          (counter + 1)
+          (Dict.insert (toString blocks) counter cache)
+          newBlocks
 
 findFullestBlock : Array Int -> (Int, Int)
 findFullestBlock blocks =
