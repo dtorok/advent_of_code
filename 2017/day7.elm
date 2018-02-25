@@ -1,101 +1,189 @@
-module Day7 exposing (part1)
+module Day7 exposing (part1, part2)
 
 import TestRun
 import Regex
 import Dict exposing (Dict)
+import Set exposing (Set)
 
 
 part1 : TestRun.Test
 part1 =
   { title = "Day 7: Recursive Circus - Part 1"
-  , solver = solver
+  , solver = solverPart1
   , testCases =
     [ ( smallInput, "tknk")
     , ( bigInput, "hmvwl")
     ]
   }
 
+part2 : TestRun.Test
+part2 =
+  { title = "Day 7: Recursive Circus - Part 2"
+  , solver = solverPart2
+  , testCases =
+    [ ( smallInput, "60")
+    , ( bigInput, "1853")
+    ]
+  }
+
 -- SOLVER
 ---------
-solver : String -> String
-solver input = input
-  |> String.split "\n"
-  |> List.filterMap parseTower -- List Tower
-  |> List.foldl registerTower (Dict.empty, Dict.empty) -- (ParentCache, TowerCache)
-  |> mergeParentCacheToTower -- TowerCache
-  |> findRootTower
-  |> towerName
+solverPart1 : String -> String
+solverPart1 input = input
+  |> tcBuild -- TowerCache
+  |> findARootTower -- Maybe Tower
+  |> Maybe.map .name -- Maybe String
+  |> Maybe.withDefault "unknown" -- String
+
+solverPart2 : String -> String
+solverPart2 input = input
+  |> tcBuild -- TowerCache
+  |> updateTotalWeights -- TowerCache
+  |> updateIsBalanced -- TowerCache
+  |> calcCorrectWeightForBalance -- Int
+  |> toString -- String
 
 -- HELPERS
 ----------
-type Tower = Tower
+type alias Tower =
   { name : String
-  , parent : Maybe Tower
-  , children : List String
+  , childNames : List String
   , weight : Int
+  , totalWeight : Int
+  , isBalanced : Bool
   }
 
-type alias ParentCache = Dict String String
 type alias TowerCache = Dict String Tower
 
 emptyTower : Tower
-emptyTower = Tower
+emptyTower =
   { name = ""
-  , parent = Nothing
-  , children = []
+  , childNames = []
   , weight = 0
+  , totalWeight = 0
+  , isBalanced = False
   }
 
-registerTower : Tower -> (ParentCache, TowerCache) -> (ParentCache, TowerCache)
-registerTower (Tower tower) (pCache, tCache) =
+tcBuild : String -> TowerCache
+tcBuild input = input
+  |> String.split "\n"
+  |> List.filterMap parseTower -- List Tower
+  |> List.foldl tcRegisterTower Dict.empty -- TowerCache
+
+
+tcRegisterTower : Tower -> TowerCache -> TowerCache
+tcRegisterTower tower cache =
+    Dict.insert tower.name tower cache
+
+tcGetTower : TowerCache -> String -> Maybe Tower
+tcGetTower cache name = Dict.get name cache
+
+tcGetTowers : TowerCache -> List String -> List Tower
+tcGetTowers cache names = names
+  |> List.filterMap (tcGetTower cache)
+
+findARootTower : TowerCache -> Maybe Tower
+findARootTower cache =
   let
-    insertParent : String -> ParentCache -> ParentCache
-    insertParent child cache = Dict.insert child tower.name cache
+    allChildren = cache
+      |> Dict.toList -- List (String, Tower)
+      |> List.map Tuple.second -- List Tower
+      |> List.map .childNames -- List (List String)
+      |> List.concat -- List String
+      |> Set.fromList -- Set String
 
-    newPcache : ParentCache
-    newPcache = List.foldl insertParent pCache tower.children
+    allTowers = cache
+      |> Dict.keys -- List String
+      |> Set.fromList -- Set String
 
-    newTcache : TowerCache
-    newTcache = Dict.insert tower.name (Tower tower) tCache
+    parents = Set.diff allTowers allChildren
   in
-    (newPcache, newTcache)
+    parents
+      |> Set.toList -- List String
+      |> tcGetTowers cache -- List Tower
+      |> List.head -- Maybe Tower
 
-mergeParentCacheToTower : (ParentCache, TowerCache) -> TowerCache
-mergeParentCacheToTower (pCache, tCache) =
+calcCorrectWeightForBalance : TowerCache -> Int
+calcCorrectWeightForBalance cache =
   let
-    pList : List (String, String)
-    pList = Dict.toList pCache
+    isNotBalanced : Tower -> Bool
+    isNotBalanced tower = not tower.isBalanced
 
-    updateTcache : (String, String) -> TowerCache -> TowerCache
-    updateTcache (ch, p) cache =
-      case (Dict.get ch cache, Dict.get p cache) of
-        (Just (Tower chT), Just pT) ->
-          Dict.insert ch (Tower { chT | parent = Just pT }) cache
-        _ ->
-          cache
-  in
-    List.foldl updateTcache tCache pList
+    areChildrenBalanced : Tower -> Bool
+    areChildrenBalanced tower = tower.childNames
+      |> tcGetTowers cache -- List Tower
+      |> List.all .isBalanced
 
-findRootTower : TowerCache -> Maybe Tower
-findRootTower tCache =
+    calcWeightForBalance : Maybe Tower -> Maybe Tower -> List Tower -> Int
+    calcWeightForBalance maybeA maybeB weights =
+      case weights of
+        w :: ws ->
+          case maybeA of
+            Nothing -> calcWeightForBalance (Just w) Nothing ws
+            Just a ->
+              case maybeB of
+                Nothing ->
+                  if a.totalWeight == w.totalWeight
+                  then calcWeightForBalance maybeA Nothing ws
+                  else calcWeightForBalance maybeA (Just w) ws
+                Just b ->
+                  if a.totalWeight == w.totalWeight
+                  then a.totalWeight - (b.totalWeight - b.weight)
+                  else b.totalWeight - (a.totalWeight - a.weight)
+        [] ->
+          case maybeA of
+            Nothing -> 0
+            Just a -> a.weight
+
+  in cache
+    |> Dict.values -- List Tower
+    |> List.filter isNotBalanced -- List Tower
+    |> List.filter areChildrenBalanced -- List Tower
+    |> List.head -- Maybe Tower
+    |> Maybe.map .childNames -- Maybe (List String)
+    |> Maybe.map (tcGetTowers cache) -- Maybe (List Tower)
+    |> Maybe.map (calcWeightForBalance Nothing Nothing) -- Maybe Int
+    |> Maybe.withDefault 0
+
+updateTotalWeights : TowerCache -> TowerCache
+updateTotalWeights cache =
   let
-    maybeRoot : Tower -> Maybe Tower
-    maybeRoot (Tower tower) =
-      case tower.parent of
-        Just parent -> Nothing
-        Nothing -> Just (Tower tower)
-  in
-    tCache
-      |> Dict.toList
-      |> List.map Tuple.second
-      |> List.filterMap maybeRoot
-      |> List.head
+    calculateTotalWeight : TowerCache -> Tower -> Int
+    calculateTotalWeight cache tower =
+        let childWeight = tower.childNames
+          |> tcGetTowers cache -- List Tower
+          |> List.map (calculateTotalWeight cache) -- List Int
+          |> List.sum -- Int
+        in
+          tower.weight + childWeight
 
-towerName : Maybe Tower -> String
-towerName mTower =
-  case mTower of
-    Just (Tower tower) -> tower.name
-    Nothing -> "unknown"
+    update : String -> Tower -> TowerCache -> TowerCache
+    update name tower cache = cache
+      |> Dict.insert name { tower | totalWeight = calculateTotalWeight cache tower }
+  in
+    cache
+      |> Dict.foldl update cache
+
+updateIsBalanced : TowerCache -> TowerCache
+updateIsBalanced cache =
+  let
+      minmax : List Int -> (Int, Int)
+      minmax list =
+        ( list |> List.minimum |> Maybe.withDefault 0
+        , list |> List.maximum |> Maybe.withDefault 0
+        )
+
+      isBalanced : Tower -> Bool
+      isBalanced tower = tower.childNames
+        |> tcGetTowers cache -- List Tower
+        |> List.map .totalWeight -- List Int
+        |> minmax -- (Int, Int)
+        |> (\(min, max) -> min == max) -- Bool
+
+      update : String -> Tower -> Tower
+      update name tower = { tower | isBalanced = isBalanced tower }
+  in
+    Dict.map update cache
 
 -- PARSER
 ---------
@@ -105,14 +193,14 @@ parseTower line =
     t :: ch :: _ ->
       Just emptyTower
         |> Maybe.andThen (parseTowerBase t)
-        |> Maybe.andThen (parseTowerChildren ch)
+        |> Maybe.andThen (parseTowerChildNames ch)
     t :: []->
       Just emptyTower
         |> Maybe.andThen (parseTowerBase t)
     [] -> Nothing
 
 parseTowerBase : String -> Tower -> Maybe Tower
-parseTowerBase input (Tower tower) =
+parseTowerBase input tower =
   let
     result : List Regex.Match
     result =
@@ -128,7 +216,7 @@ parseTowerBase input (Tower tower) =
       |> Maybe.withDefault [] -- List (Maybe String)
   in
     case matches of
-      Just n :: Just w :: [] -> Just <| Tower
+      Just n :: Just w :: [] -> Just
         { tower
         | name = n
         , weight = w -- String
@@ -138,14 +226,14 @@ parseTowerBase input (Tower tower) =
         }
       _ -> Nothing
 
-parseTowerChildren : String -> Tower -> Maybe Tower
-parseTowerChildren input (Tower tower) =
+parseTowerChildNames : String -> Tower -> Maybe Tower
+parseTowerChildNames input tower =
   let
-    children = input
+    childNames = input
       |> Regex.split Regex.All (Regex.regex ",\\s+")
       |> List.map String.trim
   in
-    Just <| Tower { tower | children = children }
+    Just { tower | childNames = childNames }
 
 -- INPUT
 --------
