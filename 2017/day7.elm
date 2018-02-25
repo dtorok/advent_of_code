@@ -32,7 +32,7 @@ type Tower = Tower
   { name : String
   , parent : Maybe Tower
   , children : List String
-  , weight : String
+  , weight : Int
   }
 
 type alias ParentCache = Dict String String
@@ -43,7 +43,7 @@ emptyTower = Tower
   { name = ""
   , parent = Nothing
   , children = []
-  , weight = "0"
+  , weight = 0
   }
 
 registerTower : Tower -> (ParentCache, TowerCache) -> (ParentCache, TowerCache)
@@ -131,7 +131,10 @@ parseTowerBase input (Tower tower) =
       Just n :: Just w :: [] -> Just <| Tower
         { tower
         | name = n
-        , weight = w
+        , weight = w -- String
+          |> String.toInt -- Result Int
+          |> Result.toMaybe -- Maybe Int
+          |> Maybe.withDefault 0 -- Int
         }
       _ -> Nothing
 
