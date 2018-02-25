@@ -6,7 +6,7 @@ import TestRun
 part1 : TestRun.Test
 part1 =
   { title = "Day 9: Stream Processing - Part 1"
-  , solver = solver
+  , solver = solver .score
   , testCases =
     [ ( "{}", "1" )
     , ( "{{{}}}", "6" )
@@ -23,20 +23,27 @@ part1 =
 part2 : TestRun.Test
 part2 =
   { title = "Day 9: Stream Processing - Part 2"
-  , solver = solver
+  , solver = solver .numGarbage
   , testCases =
-    [
+    [ ( "<>", "0" )
+    , ( "<random characters>", "17" )
+    , ( "<<<<>", "3" )
+    , ( "<{!>}>", "2" )
+    , ( "<!!>", "0" )
+    , ( "<!!!>>", "0" )
+    , ( "<{o\"i!a,<{i<a>", "10" )
+    , ( bigInput, "7314")
     ]
   }
 
 
 -- SOLVER
 ---------
-solver : String -> String
-solver input = input
+solver : (Model -> Int) -> String -> String
+solver extractor input = input
   |> String.toList
   |> analyzeStream newModel
-  |> .score
+  |> extractor
   |> toString
 
 type State = Normal | Garbage | Escape
@@ -44,6 +51,7 @@ type alias Model =
   { state : State
   , level : Int
   , score : Int
+  , numGarbage : Int
   }
 
 newModel : Model
@@ -51,6 +59,7 @@ newModel =
   { state = Normal
   , level = 0
   , score = 0
+  , numGarbage = 0
   }
 
 analyzeStream : Model -> List Char -> Model
@@ -93,7 +102,9 @@ analizeGarbageChar char model =
       | state = Escape
       }
     _ ->
-      model
+      { model
+      | numGarbage = model.numGarbage + 1
+      }
 
 analizeEscapeChar : Char -> Model -> Model
 analizeEscapeChar _ model =
