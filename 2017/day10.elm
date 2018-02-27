@@ -25,7 +25,6 @@ part2 =
 
 -- SOLVER
 ---------
-
 solver : String -> String
 solver input =
   let
@@ -51,7 +50,8 @@ solve pos skip data ring =
         solve newPos newSkip xs newRing
     [] -> ring
 
-
+-- RING
+-------
 type alias Ring = Array Int
 
 ringNew : Int -> Ring
