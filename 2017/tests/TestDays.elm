@@ -14,6 +14,7 @@ import Day8
 import Day9
 import Day10
 import Day11
+import Day12
 import TestRun
 
 
@@ -55,6 +56,8 @@ suite =
             , Day10.part2
             , Day11.part1
             , Day11.part2
+            , Day12.part1
+            , Day12.part2
             ]
         )
 
