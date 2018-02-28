@@ -9,7 +9,7 @@ import Set exposing (Set)
 part1 : TestRun.Test
 part1 =
   { title = "Day 12: Digital Plumber - Part 1"
-  , solver = solver
+  , solver = solver1
   , testCases =
     [ ( smallInput, "6")
     , ( bigInput, "113")
@@ -19,24 +19,32 @@ part1 =
 part2 : TestRun.Test
 part2 =
   { title = "Day 12: Digital Plumber - Part 2"
-  , solver = identity
+  , solver = solver2
   , testCases =
-    [ ( "?", "?")
+    [ (smallInput, "2")
+    , (bigInput, "202")
     ]
   }
 
 -- SOLVER
 ---------
-solver : String -> String
-solver input = input
+solver1 : String -> String
+solver1 input = input
   |> parseInput -- Pipes
-  |> calcGroupSize "0" -- Int
+  |> getGroupOf "0" -- Set String
+  |> Set.size -- Int
   |> toString -- String
+
+solver2 : String -> String
+solver2 input = input
+  |> parseInput
+  |> countAllGroups
+  |> toString
 
 type alias Pipes = Dict String (Set String)
 
-calcGroupSize : String -> Pipes -> Int
-calcGroupSize root pipes =
+getGroupOf : String -> Pipes -> Set String
+getGroupOf root pipes =
   let
       calc : String -> Set String -> Set String
       calc current members =
@@ -51,7 +59,29 @@ calcGroupSize root pipes =
   in
     Set.empty
       |> calc root -- Set String
-      |> Set.size -- Int
+
+countAllGroups : Pipes -> Int
+countAllGroups pipes =
+  let
+    allMembers : Set String
+    allMembers = pipes
+      |> Dict.keys -- List String
+      |> Set.fromList -- Set String
+
+    counter : Int -> Set String -> Int
+    counter cnt reached =
+      let
+        rest = Set.toList (Set.diff allMembers reached)
+      in
+        case rest of
+          x :: xs ->
+            counter
+              (cnt + 1)
+              (Set.union reached (getGroupOf x pipes))
+          [] ->
+            cnt
+  in
+    counter 0 Set.empty
 
 -- PARSER
 ---------
