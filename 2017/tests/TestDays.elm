@@ -24,7 +24,7 @@ runTest t =
             let
                 result = t.solver input
             in
-                test input <| \_ -> Expect.equal result expected
+                test ("Test: " ++ input) <| \_ -> Expect.equal result expected
     in
         describe t.title (List.map run t.testCases)
 
@@ -52,6 +52,8 @@ suite =
             , Day9.part2
             , Day10.part1
             , Day10.part2
+            , Day11.part1
+            , Day11.part2
             ]
         )
 
