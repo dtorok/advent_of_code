@@ -7,7 +7,7 @@ import Dict exposing (Dict)
 part1 : TestRun.Test
 part1 =
   { title = "Day 13: Packet Scanners - Part 1"
-  , solver = solver
+  , solver = solver1
   , testCases =
     [ ( smallInput, "24")
     , ( bigInput, "1844")
@@ -17,20 +17,36 @@ part1 =
 part2 : TestRun.Test
 part2 =
   { title = "Day 13: Packet Scanners - Part 2"
-  , solver = identity
+  , solver = solver2optimized
   , testCases =
-    [ ("", "")
+    [ (smallInput, "10")
+    , (bigInput, "3897604")
     ]
   }
 
 -- SOLVER
 ---------
-solver : String -> String
-solver input = input
+solver1 : String -> String
+solver1 input = input
   |> parseInput -- List (Int, Int)
   |> buildFirewalls -- Firewalls
-  |> sendPacket
-  |> toString
+  |> sendPacketOptimized 0 -- (Int, Bool)
+  |> Tuple.second -- Int
+  |> toString -- String
+
+solver2naive : String -> String
+solver2naive input = input
+  |> parseInput -- List (Int, Int)
+  |> buildFirewalls -- Firewalls
+  |> sendPacketInvisibleNaive -- Int
+  |> toString -- String
+
+solver2optimized : String -> String
+solver2optimized input = input
+  |> parseInput -- List (Int, Int)
+  |> buildFirewalls -- Firewalls
+  |> sendPacketInvisibleOptimized -- Int
+  |> toString -- String
 
 type Dir = Up | Down
 type alias Firewalls = Dict Int Layer
@@ -75,8 +91,6 @@ fwStepLayer _ layer =
         else
           layer
 
-
-
 buildFirewalls : List (Int, Int) -> Firewalls
 buildFirewalls layerList =
   let
@@ -86,8 +100,8 @@ buildFirewalls layerList =
   in
     List.foldl builder Dict.empty layerList
 
-sendPacket : Firewalls -> Int
-sendPacket fws =
+sendPacketNaive : Firewalls -> (Bool, Int)
+sendPacketNaive fws =
   let
     maxDepth : Int
     maxDepth = fws
@@ -98,24 +112,135 @@ sendPacket fws =
     packetPositions : List Int
     packetPositions = List.range 0 maxDepth
 
-    -- update : Firewalls -> Firewalls
-    -- update fws = Dict.map fwStepLayer fws
-
-    run : Int -> (Firewalls, Int) -> (Firewalls, Int)
-    run pos (fws, sev) =
+    run : Int -> (Firewalls, Bool, Int) -> (Firewalls, Bool, Int)
+    run pos (fws, caught, sev) =
+      -- Debug.log ((toString pos) ++ ": \n" ++ (firewallsToString pos fws)) <|
       case Dict.get pos fws of
         Just layer ->
           let
             extraSev = if layer.scanPos == 0 then pos * layer.range else 0
             newSev = sev + extraSev
+
+            currentCaught = layer.scanPos == 0
+            newCaught = caught || currentCaught
           in
-            (fwStep fws, newSev)
+            (fwStep fws, newCaught, newSev)
         Nothing ->
-          (fwStep fws, sev)
+          (fwStep fws, caught, sev)
   in
     packetPositions
-      |> List.foldl run (fws, 0)
-      |> Tuple.second
+      |> List.foldl run (fws, False, 0)
+      |> (\(_, caught, sev) -> (caught, sev) )
+
+sendPacketOptimized : Int -> Firewalls -> (Bool, Int)
+sendPacketOptimized delay fws =
+  let
+    run : Int -> Layer -> (Bool, Int) -> (Bool, Int)
+    run p layer (caught, sev) =
+      if (p + delay) % ((layer.range - 1) * 2) == 0 then
+        (True, sev + (layer.range * p))
+      else
+        (caught, sev)
+  in
+    Dict.foldl run (False, 0) fws
+
+sendPacketInvisibleNaive : Firewalls -> Int
+sendPacketInvisibleNaive fws =
+  let
+    isZeroState : Firewalls -> Bool
+    isZeroState fws = fws
+      |> Dict.values
+      |> List.map .scanPos
+      |> List.sum
+      |> (\num -> num == 0)
+
+    trySending : Int -> Firewalls -> Int
+    trySending delay fws =
+      if delay > 0 && isZeroState fws then
+        Debug.crash ("Couldn't find a path...")
+      else
+        let
+          (caught, _) =
+            -- Debug.log ("*** sending packet after " ++ (toString delay) ++ " ps:") <|
+            sendPacketNaive fws
+        in
+          if not caught then
+            delay
+          else
+            trySending (delay + 1) (fwStep fws)
+  in
+    trySending 0 fws
+
+sendPacketInvisibleOptimized : Firewalls -> Int
+sendPacketInvisibleOptimized fws =
+  let
+    run : Int -> Int
+    run delay =
+      let
+        (caught, _) = sendPacketOptimized delay fws
+      in
+        if caught then
+          run (delay + 1)
+        else
+          delay
+  in
+    run 0
+
+-- DEBUG
+--------
+firewallsToString : Int -> Firewalls -> String
+firewallsToString packetPos fws =
+  let
+    maxDepth : Int
+    maxDepth = fws
+      |> Dict.keys
+      |> List.maximum
+      |> Maybe.withDefault 0
+
+    maxRange : Int
+    maxRange = fws
+      |> Dict.values
+      |> List.map .range
+      |> List.maximum
+      |> Maybe.withDefault 0
+
+    layerPosToString : Int -> (Int, Maybe Layer) -> String
+    layerPosToString p (layerPos, maybeLayer) =
+      case maybeLayer of
+        Just layer ->
+          let
+            (l, r) =
+              if layerPos == packetPos && p == 0 then
+                ("(", ")")
+              else if p >= layer.range then
+                (" ", " ")
+              else
+                ("[", "]")
+          in
+            if layer.scanPos == p then
+              l ++ "X" ++ r
+            else
+              l ++ " " ++ r
+        Nothing ->
+          let
+            (l, r) =
+              if layerPos == packetPos && p == 0 then
+                ("(", ")")
+              else
+                (".", ".")
+          in
+            l ++ "." ++ r
+
+    lineToString : Int -> String
+    lineToString p = List.range 0 maxDepth
+      |> List.map (\i -> (i, Dict.get i fws))
+      |> List.map (layerPosToString p)
+      |> String.join " "
+
+  in
+    List.range 0 maxRange
+      |> List.map lineToString
+      |> String.join "\n"
 
 
 -- PARSER
