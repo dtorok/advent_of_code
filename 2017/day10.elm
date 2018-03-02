@@ -1,4 +1,4 @@
-module Day10 exposing (part1, part2)
+module Day10 exposing (part1, part2, knotHash)
 
 import TestRun
 import Array exposing (Array)
@@ -44,7 +44,10 @@ solver1 input =
   |> toString -- String
 
 solver2 : String -> String
-solver2 input =
+solver2 = knotHash
+
+knotHash : String -> String
+knotHash input =
   let
     data =
       input
