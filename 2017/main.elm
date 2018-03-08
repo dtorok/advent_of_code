@@ -17,38 +17,41 @@ import Day11
 import Day12
 import Day13
 import Day14
+import Day15
 
 main : Html msg
 main = div []
   [ h1 [] [ text "Advent of code 2017" ]
-  , TestRun.test Day14.part1
-  , TestRun.test Day14.part2
-  , TestRun.test Day13.part1
-  , TestRun.test Day13.part2
-  , TestRun.test Day12.part1
-  , TestRun.test Day12.part2
-  , TestRun.test Day11.part1
-  , TestRun.test Day11.part2
-  , TestRun.test Day10.part1
-  , TestRun.test Day10.part2
-  , TestRun.test Day9.part1
-  , TestRun.test Day9.part2
-  , TestRun.test Day8.part1
-  , TestRun.test Day8.part2
-  , TestRun.test Day7.part1
-  , TestRun.test Day7.part2
-  , TestRun.test Day6.part1
-  , TestRun.test Day6.part2
-  , TestRun.test Day5.part1
-  , TestRun.test Day5.part2
-  , TestRun.test Day4.part1
-  , TestRun.test Day4.part2
-  , TestRun.test Day3.part1
-  , TestRun.test Day3.part2
-  , TestRun.test Day2.part1
-  , TestRun.test Day2.part2
-  , TestRun.test Day1.part1
-  , TestRun.test Day1.part2
+  , TestRun.test Day15.part1
+  , TestRun.test Day15.part2
+  -- , TestRun.test Day14.part1
+  -- , TestRun.test Day14.part2
+  -- , TestRun.test Day13.part1
+  -- , TestRun.test Day13.part2
+  -- , TestRun.test Day12.part1
+  -- , TestRun.test Day12.part2
+  -- , TestRun.test Day11.part1
+  -- , TestRun.test Day11.part2
+  -- , TestRun.test Day10.part1
+  -- , TestRun.test Day10.part2
+  -- , TestRun.test Day9.part1
+  -- , TestRun.test Day9.part2
+  -- , TestRun.test Day8.part1
+  -- , TestRun.test Day8.part2
+  -- , TestRun.test Day7.part1
+  -- , TestRun.test Day7.part2
+  -- , TestRun.test Day6.part1
+  -- , TestRun.test Day6.part2
+  -- , TestRun.test Day5.part1
+  -- , TestRun.test Day5.part2
+  -- , TestRun.test Day4.part1
+  -- , TestRun.test Day4.part2
+  -- , TestRun.test Day3.part1
+  -- , TestRun.test Day3.part2
+  -- , TestRun.test Day2.part1
+  -- , TestRun.test Day2.part2
+  -- , TestRun.test Day1.part1
+  -- , TestRun.test Day1.part2
   ]
 
 testMain : Html msg
