@@ -39,13 +39,13 @@ solver input = input
 type alias Reg = String
 type RegOrInt = Reg Reg | Int Int
 type Instruction
-  = Snd RegOrInt
-  | Set Reg RegOrInt
+  = Set Reg RegOrInt
   | Add Reg RegOrInt
   | Mul Reg RegOrInt
   | Mod Reg RegOrInt
-  | Rcv Reg
   | Jgz Reg RegOrInt
+  | Sound RegOrInt
+  | Recover Reg
 
 type alias Executor =
   { instrs : Array Instruction
@@ -69,10 +69,6 @@ run ex =
 execute : Instruction -> Executor -> Executor
 execute instruction ex =
   case instruction of
-    Snd roi ->
-      { ex
-      | sound = Just (get roi ex)
-      , pc = ex.pc + 1 }
     Set reg roi ->
       { ex
       | regs = Dict.insert reg (get roi ex) ex.regs
@@ -89,18 +85,22 @@ execute instruction ex =
       { ex
       | regs = regChg reg roi (%) ex
       , pc = ex.pc + 1 }
-    Rcv reg ->
-      if regGet reg ex > 0 then
-        { ex
-        | recovered = ex.sound
-        , pc = ex.pc + 1 }
-      else
-        { ex
-        | pc = ex.pc + 1 }
     Jgz reg roi ->
       if regGet reg ex > 0 then
         { ex
         | pc = ex.pc + (get roi ex) }
+      else
+        { ex
+        | pc = ex.pc + 1 }
+    Sound roi ->
+      { ex
+      | sound = Just (get roi ex)
+      , pc = ex.pc + 1 }
+    Recover reg ->
+      if regGet reg ex > 0 then
+        { ex
+        | recovered = ex.sound
+        , pc = ex.pc + 1 }
       else
         { ex
         | pc = ex.pc + 1 }
@@ -164,13 +164,13 @@ parseInstruction input =
       |> String.split " " -- List String
   in
     case String.left 3 input of
-      "snd" -> args |> with1op Snd regOrInt
       "set" -> args |> with2ops Set reg regOrInt
       "add" -> args |> with2ops Add reg regOrInt
       "mul" -> args |> with2ops Mul reg regOrInt
       "mod" -> args |> with2ops Mod reg regOrInt
-      "rcv" -> args |> with1op Rcv reg
       "jgz" -> args |> with2ops Jgz reg regOrInt
+      "snd" -> args |> with1op Sound regOrInt
+      "rcv" -> args |> with1op Recover reg
       _ -> Debug.crash ("invalid input: " ++ input)
 
 reg : String -> String
