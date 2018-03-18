@@ -1,4 +1,4 @@
-module Day8 exposing (part1, part2)
+module Day08 exposing (part1, part2)
 
 import TestRun
 

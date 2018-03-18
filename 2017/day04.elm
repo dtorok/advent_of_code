@@ -1,4 +1,4 @@
-module Day4 exposing (part1, part2)
+module Day04 exposing (part1, part2)
 
 import Regex
 import Set exposing (Set)

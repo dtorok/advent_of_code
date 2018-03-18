@@ -1,4 +1,4 @@
-module Day2 exposing (part1, part2)
+module Day02 exposing (part1, part2)
 
 import TestRun
 import Regex

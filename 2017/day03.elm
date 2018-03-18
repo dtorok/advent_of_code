@@ -1,4 +1,4 @@
-module Day3 exposing (part1, part2)
+module Day03 exposing (part1, part2)
 
 import TestRun
 import Dict exposing (Dict)

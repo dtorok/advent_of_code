@@ -1,4 +1,4 @@
-module Day5 exposing (part1, part2)
+module Day05 exposing (part1, part2)
 
 import TestRun
 import Array exposing (Array)

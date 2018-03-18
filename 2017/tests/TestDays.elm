@@ -3,15 +3,15 @@ module TestDays exposing (..)
 import Expect exposing (Expectation)
 import Test exposing (Test, test, describe)
 
-import Day1
-import Day2
-import Day3
-import Day4
-import Day5
-import Day6
-import Day7
-import Day8
-import Day9
+import Day01
+import Day02
+import Day03
+import Day04
+import Day05
+import Day06
+import Day07
+import Day08
+import Day09
 import Day10
 import Day11
 import Day12
@@ -38,24 +38,24 @@ suite : Test
 suite =
     describe "Running tests for each days"
         ( List.map runTest
-            [ Day1.part1
-            , Day1.part2
-            , Day2.part1
-            , Day2.part2
-            , Day3.part1
-            , Day3.part2
-            , Day4.part1
-            , Day4.part2
-            , Day5.part1
-            , Day5.part2
-            , Day6.part1
-            , Day6.part2
-            , Day7.part1
-            , Day7.part2
-            , Day8.part1
-            , Day8.part2
-            , Day9.part1
-            , Day9.part2
+            [ Day01.part1
+            , Day01.part2
+            , Day02.part1
+            , Day02.part2
+            , Day03.part1
+            , Day03.part2
+            , Day04.part1
+            , Day04.part2
+            , Day05.part1
+            , Day05.part2
+            , Day06.part1
+            , Day06.part2
+            , Day07.part1
+            , Day07.part2
+            , Day08.part1
+            , Day08.part2
+            , Day09.part1
+            , Day09.part2
             , Day10.part1
             , Day10.part2
             , Day11.part1
