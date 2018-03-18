@@ -21,8 +21,8 @@ part2 =
   { title = "Day 18: Duet - Part 2"
   , solver = solver2
   , testCases =
-    -- [ (smallInput2, "3")
-    [ (bigInput, "?")
+    [ (smallInput2, "3")
+    , (bigInput, "7239")
     ]
   }
 
@@ -30,7 +30,7 @@ part2 =
 ---------
 solver1 : String -> String
 solver1 input = input
-  |> parseInput SendParser
+  |> parseInput
   |> newPr 0
   |> run
   |> .queueOut
@@ -41,9 +41,9 @@ solver1 input = input
 
 solver2 : String -> String
 solver2 input = input
-  |> parseInput SendParser
+  |> parseInput
   |> newPrs
-  |> runPrograms 0
+  |> runPrograms
   |> .program2
   |> .counterOut
   |> toString
@@ -56,8 +56,6 @@ type Instruction
   | Mul Reg RegOrInt
   | Mod Reg RegOrInt
   | Jgz RegOrInt RegOrInt
-  | Sound RegOrInt
-  | Recover Reg
   | Send RegOrInt
   | Receive Reg
 
@@ -70,78 +68,48 @@ type alias Program =
   { instrs : Array Instruction
   , pc : Int
   , regs : Dict Reg Int
-  , sound : Maybe Int
-  , recovered : Maybe Int
   , queueIn : List Int
   , queueOut : List Int
   , counterOut : Int
   }
 
-runPrograms : Int -> Programs -> Programs
-runPrograms counter prs =
+runPrograms : Programs -> Programs
+runPrograms prs =
   let
-    pr1_1 = -- withStats "before run" counter <|
-      prs.program1
-    pr1_2 = -- withStats "after run" counter <|
-      run pr1_1
+    pr1 = prs.program1
+    pr1_ran = run pr1
 
-    pr2_1 = prs.program2
-    pr2_2 = { pr2_1 | queueIn = Debug.log ("queueIn 2 " ++ (toString counter)) <| pr2_1.queueIn ++ pr1_2.queueOut }
-    pr2_3 = -- withStats 1 <|
-      run pr2_2
+    pr2 = prs.program2
+    pr2_queuein_updated = { pr2 | queueIn = pr2.queueIn ++ pr1_ran.queueOut }
+    pr2_ran = run pr2_queuein_updated
 
-    pr1_3 = { pr1_2 | queueIn = Debug.log ("queueIn 1 " ++ (toString counter)) <| pr1_2.queueIn ++ pr2_3.queueOut }
+    pr1_queuein_updated = { pr1_ran | queueIn = pr1_ran.queueIn ++ pr2_ran.queueOut }
 
-    pr1_x =
-      { pr1_3
+    pr1_new =
+      { pr1_queuein_updated
       | queueOut = []
-      , counterOut = pr1_3.counterOut + (List.length pr1_3.queueOut) }
-    pr2_x =
-      { pr2_3
+      , counterOut = pr1_queuein_updated.counterOut + (List.length pr1_queuein_updated.queueOut) }
+    pr2_new =
+      { pr2_ran
       | queueOut = []
-      , counterOut = pr2_3.counterOut + (List.length pr2_3.queueOut) }
+      , counterOut = pr2_ran.counterOut + (List.length pr2_ran.queueOut) }
 
     newPrs =
       { prs
-      | program1 = pr1_x
-      , program2 = pr2_x }
+      | program1 = pr1_new
+      , program2 = pr2_new }
   in
-    if List.isEmpty pr1_x.queueIn && List.isEmpty pr2_x.queueIn then
-      --Debug.log "end" <|
+    if List.isEmpty pr1_new.queueIn && List.isEmpty pr2_new.queueIn then
       newPrs
     else
-      if counter > 200 then
-        newPrs
-      else
-        --Debug.log ("round" ++ (fullStats newPrs)) <|
-        runPrograms (counter + 1) newPrs
-
-withStats : String -> Int -> Program -> Program
-withStats msg pid prs =
-  Debug.log (msg ++ " " ++ (stats pid prs)) prs
-
-fullStats : Programs -> String
-fullStats prs =
-  "\n  " ++ (stats 0 prs.program1) ++ "\n  " ++ (stats 1 prs.program2) ++ "\n  "
-
-stats : Int -> Program -> String
-stats pidNum pr =
-  let
-    queueInLen = toString <| List.length pr.queueIn
-    queueInSum = toString <| List.sum pr.queueIn
-    pc = toString <| pr.pc
-    pid = toString <| pidNum
-  in
-    "pid: " ++ pid ++ " queueIn: " ++ queueInLen ++ "/" ++ queueInSum
-
+      runPrograms newPrs
 
 run : Program -> Program
 run pr =
   case Array.get pr.pc pr.instrs of
     Just instr ->
       let
-        mPr = -- Debug.log "execute" <|
-          execute instr pr
+        mPr = execute instr pr
       in
         case mPr of
           Just newPr ->
@@ -150,18 +118,6 @@ run pr =
             pr -- blocking on rcv
     Nothing ->
       { pr | queueIn = [] } -- pc out of bounds
-
-
--- run : Program -> Program
--- run ex =
---   if isJust ex.recovered then
---     ex
---   else
---     case Array.get ex.pc ex.instrs of
---       Just instr ->
---         run (execute instr ex)
---       Nothing ->
---         ex
 
 execute : Instruction -> Program -> Maybe Program
 execute instruction ex =
@@ -176,8 +132,7 @@ execute instruction ex =
       , pc = ex.pc + 1 }
     Mul reg roi -> Just
       { ex
-      | regs = -- Debug.log ("mul " ++ (toString (regGet reg ex)) ++ " " ++ (toString (get roi ex))) <|
-          regChg reg roi (*) ex
+      | regs = regChg reg roi (*) ex
       , pc = ex.pc + 1 }
     Mod reg roi -> Just
       { ex
@@ -186,35 +141,20 @@ execute instruction ex =
     Jgz reg roi -> Just <|
       if get reg ex > 0 then
         { ex
-        | pc = -- Debug.log ("jgz from " ++ (toString ex.pc)) <|
-            ex.pc + (get roi ex) }
-      else
-        { ex
-        | pc = ex.pc + 1 }
-    Sound roi -> Just
-      { ex
-      | sound = Just (get roi ex)
-      , pc = ex.pc + 1 }
-    Recover reg -> Just <|
-      if regGet reg ex > 0 then
-        { ex
-        | recovered = ex.sound
-        , pc = ex.pc + 1 }
+        | pc = ex.pc + (get roi ex) }
       else
         { ex
         | pc = ex.pc + 1 }
     Send roi -> Just
       { ex
-      | queueOut = -- Debug.log "after send" <|
-          ex.queueOut ++ [get roi ex]
+      | queueOut = ex.queueOut ++ [get roi ex]
       , pc = ex.pc + 1 }
     Receive reg ->
       case ex.queueIn of
         x :: xs -> Just
           { ex
           | regs = Dict.insert reg x ex.regs
-          , queueIn = -- Debug.log "after receive"
-              xs
+          , queueIn = xs
           , pc = ex.pc + 1 }
         [] ->
           Nothing
@@ -253,8 +193,6 @@ newPr pid instrs =
   { instrs = instrs
   , pc = 0
   , regs = Dict.fromList [("p", pid)]
-  , sound = Nothing
-  , recovered = Nothing
   , queueIn = []
   , queueOut = []
   , counterOut = 0
@@ -268,18 +206,16 @@ isJust a =
 
 -- PARSER
 ---------
-type ParserType = SoundParser | SendParser
-
-parseInput : ParserType -> String -> Array Instruction
-parseInput parserType input = input
+parseInput : String -> Array Instruction
+parseInput input = input
   |> String.trim -- String
   |> String.split "\n" -- List String
   |> List.map String.trim -- List String
-  |> List.map (parseInstruction parserType) -- List Instruction
+  |> List.map parseInstruction -- List Instruction
   |> Array.fromList -- Array Instruction
 
-parseInstruction : ParserType -> String -> Instruction
-parseInstruction parserType input =
+parseInstruction : String -> Instruction
+parseInstruction input =
   let
     cmd = input
       |> String.left 3 -- String
@@ -289,9 +225,6 @@ parseInstruction parserType input =
       |> String.split " " -- List String
 
     (snd, rcv) =
-      if parserType == SoundParser then
-        (Sound, Recover)
-      else
         (Send, Receive)
 
   in
@@ -301,8 +234,8 @@ parseInstruction parserType input =
       "mul" -> args |> with2ops Mul reg regOrInt
       "mod" -> args |> with2ops Mod reg regOrInt
       "jgz" -> args |> with2ops Jgz regOrInt regOrInt
-      "snd" -> args |> with1op snd regOrInt
-      "rcv" -> args |> with1op rcv reg
+      "snd" -> args |> with1op Send regOrInt
+      "rcv" -> args |> with1op Receive reg
       _ -> Debug.crash ("invalid input: " ++ input)
 
 reg : String -> String
