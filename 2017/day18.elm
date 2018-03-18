@@ -9,9 +9,9 @@ import Dict exposing (Dict)
 part1 : TestRun.Test
 part1 =
   { title = "Day 18: Duet - Part 1"
-  , solver = solver
+  , solver = solver1
   , testCases =
-    [ ( smallInput, "4")
+    [ ( smallInput1, "4")
     , ( bigInput, "8600")
     ]
   }
@@ -19,21 +19,33 @@ part1 =
 part2 : TestRun.Test
 part2 =
   { title = "Day 18: Duet - Part 2"
-  , solver = identity
+  , solver = solver2
   , testCases =
-    [ ("", "")
+    -- [ (smallInput2, "3")
+    [ (bigInput, "?")
     ]
   }
 
 -- SOLVER
 ---------
-solver : String -> String
-solver input = input
-  |> parseInput
-  |> newEx
+solver1 : String -> String
+solver1 input = input
+  |> parseInput SendParser
+  |> newPr 0
   |> run
-  |> .recovered
+  |> .queueOut
+  |> List.reverse
+  |> List.head
   |> Maybe.withDefault -1
+  |> toString
+
+solver2 : String -> String
+solver2 input = input
+  |> parseInput SendParser
+  |> newPrs
+  |> runPrograms 0
+  |> .program2
+  |> .counterOut
   |> toString
 
 type alias Reg = String
@@ -43,60 +55,147 @@ type Instruction
   | Add Reg RegOrInt
   | Mul Reg RegOrInt
   | Mod Reg RegOrInt
-  | Jgz Reg RegOrInt
+  | Jgz RegOrInt RegOrInt
   | Sound RegOrInt
   | Recover Reg
+  | Send RegOrInt
+  | Receive Reg
 
-type alias Executor =
+type alias Programs =
+  { program1 : Program
+  , program2 : Program
+  }
+
+type alias Program =
   { instrs : Array Instruction
   , pc : Int
   , regs : Dict Reg Int
   , sound : Maybe Int
   , recovered : Maybe Int
+  , queueIn : List Int
+  , queueOut : List Int
+  , counterOut : Int
   }
 
-run : Executor -> Executor
-run ex =
-  if isJust ex.recovered then
-    ex
-  else
-    case Array.get ex.pc ex.instrs of
-      Just instr ->
-        run (execute instr ex)
-      Nothing ->
-        ex
+runPrograms : Int -> Programs -> Programs
+runPrograms counter prs =
+  let
+    pr1_1 = -- withStats "before run" counter <|
+      prs.program1
+    pr1_2 = -- withStats "after run" counter <|
+      run pr1_1
 
-execute : Instruction -> Executor -> Executor
+    pr2_1 = prs.program2
+    pr2_2 = { pr2_1 | queueIn = Debug.log ("queueIn 2 " ++ (toString counter)) <| pr2_1.queueIn ++ pr1_2.queueOut }
+    pr2_3 = -- withStats 1 <|
+      run pr2_2
+
+    pr1_3 = { pr1_2 | queueIn = Debug.log ("queueIn 1 " ++ (toString counter)) <| pr1_2.queueIn ++ pr2_3.queueOut }
+
+    pr1_x =
+      { pr1_3
+      | queueOut = []
+      , counterOut = pr1_3.counterOut + (List.length pr1_3.queueOut) }
+    pr2_x =
+      { pr2_3
+      | queueOut = []
+      , counterOut = pr2_3.counterOut + (List.length pr2_3.queueOut) }
+
+    newPrs =
+      { prs
+      | program1 = pr1_x
+      , program2 = pr2_x }
+  in
+    if List.isEmpty pr1_x.queueIn && List.isEmpty pr2_x.queueIn then
+      --Debug.log "end" <|
+      newPrs
+    else
+      if counter > 200 then
+        newPrs
+      else
+        --Debug.log ("round" ++ (fullStats newPrs)) <|
+        runPrograms (counter + 1) newPrs
+
+withStats : String -> Int -> Program -> Program
+withStats msg pid prs =
+  Debug.log (msg ++ " " ++ (stats pid prs)) prs
+
+fullStats : Programs -> String
+fullStats prs =
+  "\n  " ++ (stats 0 prs.program1) ++ "\n  " ++ (stats 1 prs.program2) ++ "\n  "
+
+stats : Int -> Program -> String
+stats pidNum pr =
+  let
+    queueInLen = toString <| List.length pr.queueIn
+    queueInSum = toString <| List.sum pr.queueIn
+    pc = toString <| pr.pc
+    pid = toString <| pidNum
+  in
+    "pid: " ++ pid ++ " queueIn: " ++ queueInLen ++ "/" ++ queueInSum
+
+
+run : Program -> Program
+run pr =
+  case Array.get pr.pc pr.instrs of
+    Just instr ->
+      let
+        mPr = -- Debug.log "execute" <|
+          execute instr pr
+      in
+        case mPr of
+          Just newPr ->
+            run newPr
+          Nothing ->
+            pr -- blocking on rcv
+    Nothing ->
+      { pr | queueIn = [] } -- pc out of bounds
+
+
+-- run : Program -> Program
+-- run ex =
+--   if isJust ex.recovered then
+--     ex
+--   else
+--     case Array.get ex.pc ex.instrs of
+--       Just instr ->
+--         run (execute instr ex)
+--       Nothing ->
+--         ex
+
+execute : Instruction -> Program -> Maybe Program
 execute instruction ex =
   case instruction of
-    Set reg roi ->
+    Set reg roi -> Just
       { ex
       | regs = Dict.insert reg (get roi ex) ex.regs
       , pc = ex.pc + 1 }
-    Add reg roi ->
+    Add reg roi -> Just
       { ex
       | regs = regChg reg roi (+) ex
       , pc = ex.pc + 1 }
-    Mul reg roi ->
+    Mul reg roi -> Just
       { ex
-      | regs = regChg reg roi (*) ex
+      | regs = -- Debug.log ("mul " ++ (toString (regGet reg ex)) ++ " " ++ (toString (get roi ex))) <|
+          regChg reg roi (*) ex
       , pc = ex.pc + 1 }
-    Mod reg roi ->
+    Mod reg roi -> Just
       { ex
       | regs = regChg reg roi (%) ex
       , pc = ex.pc + 1 }
-    Jgz reg roi ->
-      if regGet reg ex > 0 then
+    Jgz reg roi -> Just <|
+      if get reg ex > 0 then
         { ex
-        | pc = ex.pc + (get roi ex) }
+        | pc = -- Debug.log ("jgz from " ++ (toString ex.pc)) <|
+            ex.pc + (get roi ex) }
       else
         { ex
         | pc = ex.pc + 1 }
-    Sound roi ->
+    Sound roi -> Just
       { ex
       | sound = Just (get roi ex)
       , pc = ex.pc + 1 }
-    Recover reg ->
+    Recover reg -> Just <|
       if regGet reg ex > 0 then
         { ex
         | recovered = ex.sound
@@ -104,22 +203,37 @@ execute instruction ex =
       else
         { ex
         | pc = ex.pc + 1 }
+    Send roi -> Just
+      { ex
+      | queueOut = -- Debug.log "after send" <|
+          ex.queueOut ++ [get roi ex]
+      , pc = ex.pc + 1 }
+    Receive reg ->
+      case ex.queueIn of
+        x :: xs -> Just
+          { ex
+          | regs = Dict.insert reg x ex.regs
+          , queueIn = -- Debug.log "after receive"
+              xs
+          , pc = ex.pc + 1 }
+        [] ->
+          Nothing
 
-get : RegOrInt -> Executor -> Int
+get : RegOrInt -> Program -> Int
 get regOrInt ex =
   case regOrInt of
     Reg reg -> regGet reg ex
     Int int -> int
 
-regGet : Reg -> Executor -> Int
+regGet : Reg -> Program -> Int
 regGet reg ex =
   Maybe.withDefault 0 (Dict.get reg ex.regs)
 
-regSet : Reg -> Int -> Executor -> Executor
+regSet : Reg -> Int -> Program -> Program
 regSet reg val ex =
   { ex | regs = Dict.insert reg val ex.regs }
 
-regChg : Reg -> RegOrInt -> (Int -> Int -> Int) -> Executor -> Dict Reg Int
+regChg : Reg -> RegOrInt -> (Int -> Int -> Int) -> Program -> Dict Reg Int
 regChg reg roi f ex =
   let
     regVal = regGet reg ex
@@ -129,13 +243,21 @@ regChg reg roi f ex =
     Dict.insert reg result ex.regs
 
 
-newEx : Array Instruction -> Executor
-newEx instrs =
+newPrs : Array Instruction -> Programs
+newPrs instrs =
+  { program1 = newPr 0 instrs
+  , program2 = newPr 1 instrs }
+
+newPr : Int -> Array Instruction -> Program
+newPr pid instrs =
   { instrs = instrs
   , pc = 0
-  , regs = Dict.empty
+  , regs = Dict.fromList [("p", pid)]
   , sound = Nothing
   , recovered = Nothing
+  , queueIn = []
+  , queueOut = []
+  , counterOut = 0
   }
 
 isJust : Maybe a -> Bool
@@ -146,31 +268,41 @@ isJust a =
 
 -- PARSER
 ---------
-parseInput : String -> Array Instruction
-parseInput input = input
+type ParserType = SoundParser | SendParser
+
+parseInput : ParserType -> String -> Array Instruction
+parseInput parserType input = input
   |> String.trim -- String
   |> String.split "\n" -- List String
   |> List.map String.trim -- List String
-  |> List.map parseInstruction -- List Instruction
+  |> List.map (parseInstruction parserType) -- List Instruction
   |> Array.fromList -- Array Instruction
 
-parseInstruction : String -> Instruction
-parseInstruction input =
+parseInstruction : ParserType -> String -> Instruction
+parseInstruction parserType input =
   let
     cmd = input
       |> String.left 3 -- String
+
     args = input
       |> String.dropLeft 4 -- String
       |> String.split " " -- List String
+
+    (snd, rcv) =
+      if parserType == SoundParser then
+        (Sound, Recover)
+      else
+        (Send, Receive)
+
   in
     case String.left 3 input of
       "set" -> args |> with2ops Set reg regOrInt
       "add" -> args |> with2ops Add reg regOrInt
       "mul" -> args |> with2ops Mul reg regOrInt
       "mod" -> args |> with2ops Mod reg regOrInt
-      "jgz" -> args |> with2ops Jgz reg regOrInt
-      "snd" -> args |> with1op Sound regOrInt
-      "rcv" -> args |> with1op Recover reg
+      "jgz" -> args |> with2ops Jgz regOrInt regOrInt
+      "snd" -> args |> with1op snd regOrInt
+      "rcv" -> args |> with1op rcv reg
       _ -> Debug.crash ("invalid input: " ++ input)
 
 reg : String -> String
@@ -206,8 +338,8 @@ crashIfError result =
 
 -- INPUT
 --------
-smallInput : String
-smallInput = """
+smallInput1 : String
+smallInput1 = """
 set a 1
 add a 2
 mul a a
@@ -218,6 +350,17 @@ rcv a
 jgz a -1
 set a 1
 jgz a -2
+"""
+
+smallInput2 : String
+smallInput2 = """
+snd 1
+snd 2
+snd p
+rcv a
+rcv b
+rcv c
+rcv d
 """
 
 bigInput : String
