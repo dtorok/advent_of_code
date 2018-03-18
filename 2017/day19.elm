@@ -7,40 +7,50 @@ import Array exposing (Array)
 part1 : TestRun.Test
 part1 =
   { title = "Day 19: A Series of Tubes - Part 1"
-  , solver = solver
+  , solver = solver1
   , testCases =
-    -- [ ( smallInput, "ABCDEF")
-    [ ( bigInput, "LOHMDQATP")
+    [ ( smallInput, "ABCDEF" )
+    , ( bigInput, "LOHMDQATP" )
     ]
   }
 
 part2 : TestRun.Test
 part2 =
   { title = "Day 19: A Series of Tubes - Part 2"
-  , solver = identity
+  , solver = solver2
   , testCases =
-    [ ("", "")
+    [ ( smallInput, "38" )
+    , ( bigInput, "16492" )
     ]
   }
 
 -- SOLVER
 ---------
-solver : String -> String
-solver input = input
+solver1 : String -> String
+solver1 input = input
   |> parseInput
   |> runThrough
+  |> Tuple.first
+
+solver2 : String -> String
+solver2 input = input
+  |> parseInput
+  |> runThrough
+  |> Tuple.second
+  |> (\i -> i - 1) -- minus the last step
+  |> toString
 
 type Cell = None | Tube | Cross | Letter Char
 type alias Map = Array ( Array Cell )
 
-runThrough : Map -> String
+runThrough : Map -> (String, Int)
 runThrough map =
   let
     start = findStart map
     dir = (1, 0)
   in
-    stepThrough start dir map ""
-      |> String.reverse
+    stepThrough start dir map ("", 0)
+      |> (\(result, count) -> (String.reverse result, count))
 
 findStart : Map -> (Int, Int)
 findStart map =
@@ -57,23 +67,23 @@ findStart map =
   in
     (0, find 0)
 
-stepThrough : (Int, Int) -> (Int, Int) -> Map -> String -> String
-stepThrough pos dir map result =
+stepThrough : (Int, Int) -> (Int, Int) -> Map -> (String, Int) -> (String, Int)
+stepThrough pos dir map (result, count) =
   let
     currCell = mapGet pos map
   in
     case currCell of
       Just None ->
-        result
+        (result, count + 1)
       Just Tube ->
-        stepThrough (move pos dir) dir map result
+        stepThrough (move pos dir) dir map (result, count + 1)
       Just Cross ->
         let
           newDir = findNewDir pos dir map
         in
-          stepThrough (move pos newDir) newDir map result
+          stepThrough (move pos newDir) newDir map (result, count + 1)
       Just (Letter ch) ->
-        stepThrough (move pos dir) dir map (String.cons ch result)
+        stepThrough (move pos dir) dir map ((String.cons ch result), count + 1)
       Nothing ->
         Debug.crash "Tube lead out of the map???"
 

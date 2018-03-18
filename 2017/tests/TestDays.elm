@@ -19,6 +19,9 @@ import Day13
 import Day14
 import Day15
 import Day16
+import Day17
+import Day18
+import Day19
 import TestRun
 
 
@@ -70,6 +73,12 @@ suite =
             , Day15.part2
             , Day16.part1
             , Day16.part2
+            , Day17.part1
+            , Day17.part2
+            , Day18.part1
+            , Day18.part2
+            , Day19.part1
+            , Day19.part2
             ]
         )
 
