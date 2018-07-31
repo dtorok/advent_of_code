@@ -23,12 +23,15 @@ import Day17
 import Day18
 import Day19
 import Day20
+import Day21
 
 main : Html msg
 main = div []
   [ h1 [] [ text "Advent of code 2017" ]
-  , TestRun.test Day20.part1
-  , TestRun.test Day20.part2
+  , TestRun.test Day21.part1
+  -- , TestRun.test Day21.part2
+  -- , TestRun.test Day20.part1
+  -- , TestRun.test Day20.part2
   -- , TestRun.test Day19.part1
   -- , TestRun.test Day19.part2
   -- , TestRun.test Day18.part1
