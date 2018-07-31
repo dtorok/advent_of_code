@@ -114,19 +114,55 @@ suite =
                     in
                       Expect.equal expected (Day21.join input)
             , describe "helpers"
-              [ test "rotateCcw" <|
+              [ test "rotateCcw 1" <|
                   \_ ->
                       let
                         input =
                           [ [ 1, 2, 3 ]
-                          , [ 2, 3, 4 ]
-                          , [ 3, 4, 5 ] ]
+                          , [ 2, 4, 8 ]
+                          , [ 3, 9, 0 ] ]
                         expected =
-                          [ [ 3, 4, 5 ]
-                          , [ 2, 3, 4 ]
+                          [ [ 3, 8, 0 ]
+                          , [ 2, 4, 9 ]
                           , [ 1, 2, 3 ] ]
                       in
-                        Expect.equal expected (Day21.rotateCcw input)
+                        Expect.equal expected (Day21.rotateCcw 1 input)
+              , test "rotateCcw 2" <|
+                  \_ ->
+                      let
+                        input =
+                          [ [ 1, 2, 3 ]
+                          , [ 2, 4, 8 ]
+                          , [ 3, 9, 0 ] ]
+                        expected =
+                          [ [ 0, 9, 3 ]
+                          , [ 8, 4, 2 ]
+                          , [ 3, 2, 1 ] ]
+                      in
+                        Expect.equal expected (Day21.rotateCcw 2 input)
+              , test "rotateCcw 3" <|
+                  \_ ->
+                      let
+                        input =
+                          [ [ 1, 2, 3 ]
+                          , [ 2, 4, 8 ]
+                          , [ 3, 9, 0 ] ]
+                        expected =
+                          [ [ 3, 2, 1 ]
+                          , [ 9, 4, 2 ]
+                          , [ 0, 8, 3 ] ]
+                      in
+                        Expect.equal expected (Day21.rotateCcw 3 input)
+              , test "rotateCcw 4" <|
+                  \_ ->
+                      let
+                        input =
+                          [ [ 1, 2, 3 ]
+                          , [ 2, 4, 8 ]
+                          , [ 3, 9, 0 ] ]
+                        expected = input
+                      in
+                        Expect.equal expected (Day21.rotateCcw 4 input)
               , test "flipV" <|
                   \_ ->
                     let
