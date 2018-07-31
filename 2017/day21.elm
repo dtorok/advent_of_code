@@ -1,12 +1,13 @@
 module Day21 exposing (part1, part2, transpose, split, join, rotateCcw, flipH, flipV)
 
+import Dict exposing (Dict)
 import TestRun
 
 
 part1 : TestRun.Test
 part1 =
   { title = "Day 21: Fractal Art - Part 1"
-  , solver = solver
+  , solver = solver1
   , testCases =
     [ ( bigInput, "147")
     ]
@@ -15,18 +16,24 @@ part1 =
 part2 : TestRun.Test
 part2 =
   { title = "Day 21: Fractal Art - Part 2"
-  , solver = identity
+  , solver = solver2
   , testCases =
-    [ ("", "")
+    [ (bigInput, "1936582")
     ]
   }
 
 -- SOLVER
 ---------
-solver : String -> String
-solver input = input
+solver1 : String -> String
+solver1 = solver 5
+
+solver2 : String -> String
+solver2 = solver 18
+
+solver : Int -> String -> String
+solver num input = input
   |> parseInput
-  |> (\repl -> solver1 5 repl initMatrix)
+  |> (\repl -> runner num repl initMatrix)
   |> countChar '#'
   |> toString
 
@@ -41,13 +48,12 @@ initMatrix =
   , [ '.', '.', '#' ]
   , [ '#', '#', '#' ] ]
 
-solver1 : Int -> List (Matrix a, Matrix a)-> Matrix a -> Matrix a
-solver1 num replacements matrix =
+runner : Int -> Dict String (Matrix Char) -> Matrix Char -> Matrix Char
+runner num replacements matrix =
   if num == 0 then
     matrix
   else
     let
-      -- newmatrix = solver1 matrix (num - 1) replacements
       boxsize =
         if List.length matrix % 2 == 0
           then 2
@@ -57,32 +63,18 @@ solver1 num replacements matrix =
         |> split boxsize
         |> List.map (List.map (findReplacement replacements))
         |> join
-        |> solver1 (num - 1) replacements
+        |> runner (num - 1) replacements
 
-findReplacement : List (Matrix a, Matrix a) -> Matrix a -> Matrix a
+findReplacement : Dict String (Matrix Char) -> Matrix Char -> Matrix Char
 findReplacement replacements matrix =
-  case replacements of
-    (from, to) :: xs ->
-      if testReplacement from matrix then
-        to
-      else
-        findReplacement xs matrix
-    [] -> matrix
+  case Dict.get (matrix2str matrix) replacements of
+    Just to -> to
+    _ -> matrix
 
-testReplacement : Matrix a -> Matrix a -> Bool
-testReplacement ref matrix = False
-  || matrix == (ref)
-  || matrix == (ref |> flipH)
-  || matrix == (ref |> flipV)
-  || matrix == (ref |> rotateCcw 1)
-  || matrix == (ref |> rotateCcw 1 |> flipH)
-  || matrix == (ref |> rotateCcw 1 |> flipV)
-  || matrix == (ref |> rotateCcw 2)
-  || matrix == (ref |> rotateCcw 2 |> flipH)
-  || matrix == (ref |> rotateCcw 2 |> flipV)
-  || matrix == (ref |> rotateCcw 3)
-  || matrix == (ref |> rotateCcw 3 |> flipH)
-  || matrix == (ref |> rotateCcw 3 |> flipV)
+matrix2str : Matrix Char -> String
+matrix2str matrix = matrix
+  |> List.map String.fromList
+  |> String.join "/"
 
 countChar : Char -> Matrix Char -> Int
 countChar ch matrix = matrix -- List (List Char)
@@ -152,23 +144,43 @@ group n l =
 
 -- PARSER
 ---------
-parseInput : String -> List (Matrix Char, Matrix Char)
+parseInput : String -> Dict String (Matrix Char)
 parseInput input = input
-  |> String.trim
-  |> String.split "\n"
-  |> List.map parseRule
+  |> String.trim -- String
+  |> String.split "\n" -- List String
+  |> List.map parseRule -- List (List (Matrix, Matrix))
+  |> List.concat -- List (Matrix, Matrix)
+  |> Dict.fromList -- Dict (Matrix, Matrix)
 
-parseRule : String -> (Matrix Char, Matrix Char)
+parseRule : String -> List (String, Matrix Char)
 parseRule rule = rule
   |> String.split " => "
   |> List.map parseMatrix
   |> toTuple
+  |> multiplyRule
+
 
 parseMatrix : String -> Matrix Char
 parseMatrix input = input
   |> String.trim
   |> String.split "/"
   |> List.map String.toList
+
+multiplyRule : (Matrix Char, Matrix Char) -> List (String, Matrix Char)
+multiplyRule (from, to) = List.map (\ f -> (matrix2str (f from), to)) <|
+  [ identity
+  , flipH
+  , flipV
+  , rotateCcw 1
+  , rotateCcw 1 << flipH
+  , rotateCcw 1 << flipV
+  , rotateCcw 2
+  , rotateCcw 2 << flipH
+  , rotateCcw 2 << flipV
+  , rotateCcw 3
+  , rotateCcw 3 << flipH
+  , rotateCcw 3 << flipV
+  ]
 
 -- INPUT
 --------
