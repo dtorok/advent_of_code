@@ -32,5 +32,5 @@ solve2 = show
 
 main :: IO ()
 main = do
-  solve "day01.input" "01/01" solve1
-  solve "day01.input" "01/02" solve2
+  solve "../2018/day1.input" "01/01" solve1
+  solve "../2018/day1.input" "01/02" solve2

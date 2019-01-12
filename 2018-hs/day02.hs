@@ -18,12 +18,8 @@ solve2 input = show
              . commons
              . head
              . filter (diff 1)
-             . pair
-             $ (ids, ids)
+             $ (,) <$> ids <*> ids
   where ids = lines input
-
-pair :: ([String], [String]) -> [(String, String)]
-pair (xs, ys) = [(x, y) | x <- xs, y <- ys, x /= y]
 
 diff :: Int -> (String, String) -> Bool
 diff d (a, b) = d == length [x | (x, y) <- zip a b, x /= y]
@@ -40,5 +36,5 @@ solve filename prefix solver = do
 
 main :: IO ()
 main = do
-  solve "day02.input" "02/01" solve1
-  solve "day02.input" "02/02" solve2
+  solve "../2018/day2.input" "02/01" solve1
+  solve "../2018/day2.input" "02/02" solve2
