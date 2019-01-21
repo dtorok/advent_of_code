@@ -1,4 +1,4 @@
-module Utils (parseNextNumber, range, solve, parse, parseInt, parseDate, parseTime, parseDateTime, (<<<), (>>>), largestInMap) where
+module Utils (parseNextNumber, range, solve, parse, parseInt, parseDate, parseTime, parseDateTime, (<<<), (>>>), largestInMap, strip) where
 
 import Text.ParserCombinators.ReadP
 import qualified Data.List as L
@@ -49,6 +49,9 @@ a >>> b = do
   _ <- a
   ret <- b
   return ret
+
+strip :: String -> String
+strip = reverse . dropWhile isSpace . reverse . dropWhile isSpace
 
 parse :: ReadS a -> [String] -> [a]
 parse parser lines = L.map (fst . head) . L.map parser $ lines
