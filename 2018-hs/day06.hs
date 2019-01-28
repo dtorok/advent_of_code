@@ -48,10 +48,7 @@ solve1 input = show . snd . largestInMap . Map.map size . Map.filter (not . infi
     emptyCmap = Map.fromList . map (\c -> (c, Info 0 False)) $ coords
 
     buildCmap :: Map.Map Coord Info -> Coord -> Map.Map Coord Info
-    buildCmap cmap cArea =
-      case closestCoords of
-        (c:[]) -> addToMap cmap c
-        otherwise -> cmap
+    buildCmap cmap cArea = maybe cmap (addToMap cmap) closestCoord
       where
         outside :: Bool
         outside = isOutside bb cArea
@@ -62,8 +59,8 @@ solve1 input = show . snd . largestInMap . Map.map size . Map.filter (not . infi
         minD :: Int
         minD = snd . head $ around
 
-        closestCoords :: [Coord]
-        closestCoords = map fst . filter ((== minD) . snd) $ around
+        closestCoord :: Maybe Coord
+        closestCoord = sHead . map fst . filter ((== minD) . snd) $ around
 
         addToMap :: Map.Map Coord Info -> Coord -> Map.Map Coord Info
         addToMap cm c = Map.adjust adjustInfo c cm
