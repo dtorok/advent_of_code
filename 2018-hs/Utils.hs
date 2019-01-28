@@ -4,6 +4,7 @@ import Text.ParserCombinators.ReadP
 import qualified Data.List as L
 import qualified Data.Map.Strict as M
 import Data.Char
+import Debug.Trace
 
 solve :: String -> String -> (String -> String)-> IO ()
 solve filename prefix solver = do
