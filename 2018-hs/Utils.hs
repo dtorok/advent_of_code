@@ -60,5 +60,5 @@ parse parser lines = L.map (fst . head) . L.map parser $ lines
 range :: Int -> Int -> [Int]
 range from len = L.take len $ iterate (+1) from
 
-largestInMap :: Ord a => M.Map Int a -> (Int, a)
+largestInMap :: Ord a => M.Map k a -> (k, a)
 largestInMap = L.head . L.reverse . L.sortOn snd . M.toList

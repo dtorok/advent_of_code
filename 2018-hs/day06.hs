@@ -40,7 +40,7 @@ mkArea :: (Coord, Coord) -> [Coord]
 mkArea (tl, br) = Coord <$> [x tl .. x br] <*> [y tl .. y br]
 
 solve1 :: String -> String
-solve1 input = show . size . head . reverse . sortOn size . filter (\i -> infinite i == False) . map snd . Map.toList . foldl buildCmap emptyCmap $ area
+solve1 input = show . snd . largestInMap . Map.map size . Map.filter (not . infinite) . foldl buildCmap emptyCmap $ area
   where
     coords = mkCoords input
     bb = mkBB coords
@@ -66,9 +66,21 @@ solve1 input = show . size . head . reverse . sortOn size . filter (\i -> infini
         closestCoords = map fst . filter ((== minD) . snd) $ around
 
         addToMap :: Map.Map Coord Info -> Coord -> Map.Map Coord Info
-        addToMap cm c = Map.adjust (\i -> Info (size i + 1) (infinite i || outside)) c cm
+        addToMap cm c = Map.adjust adjustInfo c cm
 
+        adjustInfo :: Info -> Info
+        adjustInfo info = Info (size info + 1) (infinite info || outside)
+
+solve2 :: String -> String
+solve2 input = show . length . filter (< 10000) . map totalDistances $ area
+  where
+    coords = mkCoords input
+    area = mkArea . mkBB $ coords
+
+    totalDistances :: Coord -> Int
+    totalDistances cArea = sum . map (distance cArea) $ coords
 
 main :: IO ()
 main = do
   solve "../2018/day6.input" "06/01" solve1
+  solve "../2018/day6.input" "06/02" solve2
