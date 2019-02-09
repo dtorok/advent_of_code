@@ -35,15 +35,8 @@ remove_current (x:xs, ys, size) = (xs, ys, size - 1)
 
 current :: Board -> Int
 current (x:_, _, _) = x
--- current board = current . r $ board
-
-s (a, b, _) = length a + length b
-showProg curr
-  | curr `mod` 10000 == 0 = traceShowId curr
-  | otherwise         = curr
 
 solution :: Int -> Int -> Int
--- solution players rounds = maxScore $ foldl go (init_board, Map.empty, 0) [1..rounds]
 solution players rounds = go (init_board, Map.empty, 0) 1
   where
     go :: (Board, Map.Map Int Int, Int) -> Int -> Int
