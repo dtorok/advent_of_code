@@ -11,15 +11,18 @@ solve filename prefix solver = do
   d <- readFile filename
   putStr $ prefix ++ ": " ++ (solver d) ++ "\n"
 
+isNum :: Char -> Bool
+isNum c = isNumber c || c == '-'
+
 parseNextNumber :: ReadP Int
 parseNextNumber = do
-  munch (not . isNumber)
-  num <- read <$> munch1 isNumber
+  munch (not . isNum)
+  num <- read <$> munch1 isNum
   return num
 
 parseInt :: ReadP Int
 parseInt = do
-  i <- munch1 isNumber
+  i <- munch1 isNum
   return $ read i
 
 parseDate :: ReadP (Int, Int, Int)
