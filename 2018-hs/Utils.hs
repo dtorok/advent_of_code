@@ -1,4 +1,4 @@
-module Utils (parseNextNumber, range, solve, parse, parseInt, parseDate, parseTime, parseDateTime, (<<<), (>>>), largestInMap, strip, sHead) where
+module Utils (parseNextNumber, range, solve, parse, parseInt, parseDate, parseTime, parseDateTime, (<<<), (>>>), largestInMap, largestInMapWith, strip, sHead) where
 
 import Text.ParserCombinators.ReadP
 import qualified Data.List as L
@@ -65,6 +65,9 @@ range from len = L.take len $ iterate (+1) from
 
 largestInMap :: Ord a => M.Map k a -> (k, a)
 largestInMap = L.head . L.reverse . L.sortOn snd . M.toList
+
+largestInMapWith :: Ord b => (a -> b) -> M.Map k a -> (k, a)
+largestInMapWith f = L.head . L.reverse . L.sortOn (f . snd) . M.toList
 
 sHead :: [a] -> Maybe a
 sHead [] = Nothing
