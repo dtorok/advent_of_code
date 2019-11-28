@@ -1,4 +1,4 @@
-module Utils (parseNextNumber, range, solve, parse, parseInt, parseDate, parseTime, parseDateTime, (<<<), (>>>), largestInMap, largestInMapWith, strip, sHead) where
+module Utils (parseNextNumber, range, solve, parse, parseInt, parseDate, parseTime, parseDateTime, (<<<), (>>>), largestInMap, largestInMapWith, strip, sHead, rowsToMap) where
 
 import Text.ParserCombinators.ReadP
 import qualified Data.List as L
@@ -59,6 +59,15 @@ strip = reverse . dropWhile isSpace . reverse . dropWhile isSpace
 
 parse :: ReadS a -> [String] -> [a]
 parse parser lines = L.map (fst . head) . L.map parser $ lines
+
+rowsToMap :: String -> M.Map (Int, Int) Char
+rowsToMap input = foldl parseRow M.empty $ zip (lines input) [0..]
+    where
+        parseRow :: M.Map (Int, Int) Char -> (String, Int) -> M.Map (Int, Int) Char
+        parseRow result (row, r) = foldl (parseChar r) result $ zip row [0..]
+
+        parseChar :: Int -> M.Map (Int, Int) Char -> (Char, Int) -> M.Map (Int, Int) Char
+        parseChar r result (ch, c) = M.insert (r, c) ch result
 
 range :: Int -> Int -> [Int]
 range from len = L.take len $ iterate (+1) from

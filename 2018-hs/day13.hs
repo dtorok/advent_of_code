@@ -1,207 +1,189 @@
 import Utils
-import Prelude hiding (lookup, Right, Left)
-import Data.Map.Strict (Map, insert, empty, (!), fromList, toList, findWithDefault, lookup, keys)
-import qualified Data.List as L
-import qualified Data.Maybe as Maybe
+import Data.Map.Strict (Map, empty, insert, (!)) --, insert, empty, (!), fromList, toList, findWithDefault, lookup)
+import qualified Data.Map.Strict as M
+import Data.List (sortOn)
 
-type Size = (Int, Int)
+
+-- DATA
+-------
+data RoadSegment = H | V | TL | TR | X deriving (Show, Eq)
 type Coord = (Int, Int)
+type CartDir = Coord
+type Road = Map Coord RoadSegment
+type Game = (Road, [Cart])
 
--- Cart
-data CartDir = Up | Right | Down | Left deriving (Eq, Ord, Show)
-data CartLastTurn = CartTurnLeft | CartStraight | CartTurnRight deriving Show
-data Cart = Cart Coord CartDir CartLastTurn deriving Show
+data Cart = Cart 
+    { cartCoord :: Coord
+    , cartDir   :: CartDir
+    , nextTurns  :: [(Coord -> Coord)]
+    }
 
--- Road
-data Road = H | V | TL | TR | X deriving (Eq, Ord, Show)
+instance Show Cart where
+    show c = show (cartCoord c) ++ " - " ++ show (cartDir c)
 
--- Game
-type Roads = Map Coord Road
-type Carts = [Cart]
-data Game = Game Size Roads Carts
+-- DIRECTIONS
+-------------
+up :: Coord
+up = (-1, 0)
 
+right :: Coord
+right = (0, 1)
 
----- Helpers
+down :: Coord
+down = (1, 0)
 
----- Parsers
--- parseCart
-cartDirMap :: Map Char CartDir
-cartDirMap = fromList 
-    [ ('^', Up)
-    , ('>', Right)
-    , ('v', Down)
-    , ('<', Left)
-    ]
+left :: Coord
+left = (0, -1)
 
-cartDirMapRev :: Map CartDir Char
-cartDirMapRev = reverseMap cartDirMap
+add :: Coord -> Coord -> Coord
+add (r1, c1) (r2, c2) = (r1 + r2, c1 + c2)
+
+turnRight :: CartDir -> CartDir
+turnRight (r, c) = (c, -r)
+
+turnLeft :: CartDir -> CartDir
+turnLeft (r, c) = (-c, r)
+
+-- PARSER
+---------
+parseRoadSegment :: Char -> Maybe RoadSegment
+parseRoadSegment '-'  = Just H
+parseRoadSegment '>'  = Just H
+parseRoadSegment '<'  = Just H
+parseRoadSegment '|'  = Just V
+parseRoadSegment 'v'  = Just V
+parseRoadSegment '^'  = Just V
+parseRoadSegment '/'  = Just TR
+parseRoadSegment '\\' = Just TL
+parseRoadSegment '+'  = Just X
+parseRoadSegment _    = Nothing
 
 parseCartDir :: Char -> Maybe CartDir
-parseCartDir c = lookup c cartDirMap 
+parseCartDir '^' = Just up                                                                                                                                                                                                                                                                                                                                      
+parseCartDir '>' = Just right
+parseCartDir 'v' = Just down
+parseCartDir '<' = Just left
+parseCartDir _   = Nothing
 
-parseCart :: (Coord, Char) -> Maybe Cart
-parseCart (coord, c) = do
-    cartDir <- parseCartDir c
-    return $ Cart coord cartDir CartTurnLeft
+parseCart :: (Coord, CartDir) -> Cart
+parseCart (coord, cartDir) = Cart { cartCoord = coord, cartDir = cartDir, nextTurns = take 99999 (cycle [turnLeft, id, turnRight])}
 
-parseCarts :: [[Char]] -> Carts
-parseCarts matrix = Maybe.mapMaybe parseCart (coordMatrix matrix)
+parseRoad :: String -> Road
+parseRoad = M.mapMaybe parseRoadSegment . rowsToMap
 
-
--- parseRoad
-roadMap :: Map Char Road
-roadMap = fromList
-    [ ('|' , H)
-    , ('-' , V)
-    , ('+' , X)
-    , ('/' , TR)
-    , ('\\', TL)
-    ]
-
-roadMapCart :: Map Char Road
-roadMapCart = fromList
-    [ ('^' , H)
-    , ('>' , V)
-    , ('v' , H)
-    , ('<' , V)
-    ]
-
-roadMapRev :: Map Road Char
-roadMapRev = reverseMap roadMap
-
--- Alright, this is blackmagic, but I can't come up with a better version now
--- Checks c in roadMap, and if it's not there, it takes from roadMapCart, or returns Nothing
-parseRoad :: Char -> Maybe Road
-parseRoad c = maybe (lookup c roadMapCart) Just (lookup c roadMap)
-
-parseRoads :: [[Char]] -> Roads
-parseRoads matrix = fromList $ Maybe.mapMaybe f (coordMatrix matrix)
-    where
-        f (coord, c) = 
-            do
-                road <- parseRoad c
-                return $ (coord, road)
+parseCarts :: String -> [Cart]
+parseCarts = map parseCart . M.toList . M.mapMaybe parseCartDir . rowsToMap
 
 parseGame :: String -> Game
-parseGame input = 
-    let
-        matrix = lines input
-        size = (0, 0) -- I think I won't need this
-        roads = parseRoads matrix
-        carts = parseCarts matrix
-    in
-        Game size roads carts
+parseGame input = (parseRoad input, parseCarts input)
 
-
----- Printing
---
-printCell :: Roads -> Carts -> Coord -> Char
-printCell roads carts coord =
-     case (getCart carts coord, getRoad roads coord) of
-        (Just (Cart _ d _), _) -> cartDirMapRev ! d
-        (_,         Just road) -> roadMapRev ! road
-        _ -> ' '
-
-printGame :: Game -> String
-printGame (Game _ roads carts) = '\n' : printMatrix
+-- CRASHES
+----------
+isCartAt :: Coord -> [Cart] -> Bool
+isCartAt c carts = any id $ map f carts
     where
-        printMatrix :: String
-        printMatrix = L.concat . L.intersperse "\n" $ map printRow [0..h]
-        printRow :: Int -> String
-        printRow c = map (printCell roads carts) ((,) <$> [c] <*> [0..w])
-        h = L.maximum . map fst . keys $ roads
-        w = L.maximum . map snd . keys $ roads
+        f :: Cart -> Bool
+        f cart = cartCoord cart == c
+
+crashCoord :: [Cart] -> Maybe Coord
+crashCoord (a:[]) = Nothing
+crashCoord (a:b:xs) =
+    if cartCoord a == cartCoord b then
+        Just (cartCoord a)
+    else crashCoord (b:xs)
+
+removeCartsAt :: Coord -> [Cart] -> [Cart]
+removeCartsAt c carts = filter f carts
+    where
+        f :: Cart -> Bool
+        f cart = cartCoord cart /= c
+
+-- MOVE CARTS
+-------------
+turnCartAt :: RoadSegment -> Cart -> Cart
+turnCartAt rs cart = cart { cartDir = cd', nextTurns = nt'}
+    where
+        cd = cartDir cart
+        nt = nextTurns cart
+
+        cd' = 
+            if rs == TR then
+                if cd `elem` [up, down] then turnRight cd
+                else turnLeft cd
+            else if rs == TL then
+                if cd `elem` [up, down] then turnLeft cd
+                else turnRight cd
+            else if rs == X then
+                (head nt) cd
+            else
+                cd
         
+        nt' = 
+            if rs == X then
+                drop 1 nt
+            else
+                nt
 
+turnCart :: Road -> Cart -> Cart
+turnCart road cart = turnCartAt (road ! (cartCoord cart)) cart
 
-instance Show Game where
-    show = printGame
+moveCart :: Cart -> Cart
+moveCart cart = cart { cartCoord = (cartCoord cart) `add` (cartDir cart) }
 
-
-
----- Stepper
-step :: Game -> Game
-step (Game size roads carts) = Game size roads carts'
+moveAndRemoveCarts :: [Cart] -> [Cart] -> [Cart]
+moveAndRemoveCarts result [] = result
+moveAndRemoveCarts result (x:xs) = moveAndRemoveCarts result' xs' 
     where
-        carts' :: [Cart]
-        carts' = map (stepCart roads) carts
-
-stepCart :: Roads -> Cart -> Cart
-stepCart roads (Cart coord d lturn) = Cart coord' d' lturn'
-    where
-        coord' = stepCoord d coord
-        road' = fromJust (getRoad roads coord')
-        d' lturn' = stepDir road' d lturn
-
-stepCoord :: CartDir -> Coord -> Coord
-stepCoord d (r, c) =
-    case d of
-        Left -> (r, c - 1)
-        Down -> (r + 1, c)
-        Right -> (r, c + 1)
-        Up -> (r - 1, c)
-
-stepDir :: Road -> CartDir -> CartLastTurn -> CartDir -> CarLastTurn
-stepDir road d lturn = case (road, d, lturn) of
-    (
-
--- stepCart :: Roads -> Cart -> Cart
--- stepCart roads cart@(Cart coord _ _) = 
---     case (getRoad roads coord) of
---         Just H -> stepCartH cart
---         Just V -> stepCartV cart
---         Just X -> stepCartX cart
---         Just TL -> stepCartTL cart
---         Just TR -> stepCartTR cart
-
-stepCartH :: Cart -> Cart
-stepCartH (Cart coord d lturn) =
-    case d of
+        x' = moveCart x
+        cx' = cartCoord x'
+        xs' =
+            if isCartAt cx' xs then
+                removeCartsAt cx' xs
+            else
+                xs
         
+        result' = 
+            if isCartAt cx' result then
+                removeCartsAt cx' result
+            else if isCartAt cx' xs then
+                result
+            else
+                x' : result
 
-stepCartV :: Cart -> Cart
-stepCartV = id
+moveCarts :: [Cart] -> [Cart] -> [Cart]
+moveCarts _ = map moveCart
 
-stepCartX :: Cart -> Cart
-stepCartX = id
+-- SOLUTIONS
+------------
+update :: ([Cart] -> [Cart] -> [Cart]) -> Game -> Game
+update fMoveCarts (road, carts) =
+    (road, map (turnCart road) . fMoveCarts [] . sortOn cartCoord $ carts)
 
-stepCartTL :: Cart -> Cart
-stepCartTL = id
+game1 :: Game -> Coord
+game1 (road, carts) = 
+    case crashCoord carts of
+        Just c -> c
+        Nothing -> game1 g'
+    where
+        g' = update moveCarts (road, carts)
 
-stepCartTR :: Cart -> Cart
-stepCartTR = id
-
-
-
-
-
--- helpers
---
-coordMatrix :: [[a]] -> [(Coord, a)]
-coordMatrix m =
-    let
-        f (r, row) = map (g r) (zip [0..] row)
-        g r (c, item) = ((r, c), item)
-    in
-        concatMap f (zip [0..] m)
-
-getCart :: Carts -> Coord -> Maybe Cart
-getCart carts coord = L.find (\(Cart cc _ _) -> cc == coord) carts
-
-getRoad :: Roads -> Coord -> Maybe Road
-getRoad roads coord = lookup coord roads
-
--- reverseMap
-reverseMap :: (Ord b) => Map a b -> Map b a
-reverseMap = fromList . map (\(a, b) -> (b, a)) . toList
-
-nextInList :: Eq a => [a] -> a -> a
-nextInList xs
-
----- solver
+game2 :: Game -> Coord
+game2 (road, c:[]) = cartCoord c
+game2 (road, carts) = game2 g'
+    where
+        g' = 
+            case crashCoord carts of
+                Just c -> (road, removeCartsAt c carts)
+                Nothing -> update moveAndRemoveCarts (road, carts)
+            
+        
 solve1 :: String -> String
-solve1 = show . step . parseGame
+solve1 = show . game1 . parseGame
+
+solve2 :: String -> String
+solve2 = show . game2 . parseGame
 
 main :: IO ()
-main = solve "../2018/day13.example" "13/01" solve1
--- main = putStr "ok"
+main = do
+    solve "../2018/day13.input" "13/01" solve1
+    solve "../2018/day13.input" "13/02" solve2
