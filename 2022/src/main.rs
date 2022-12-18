@@ -2,6 +2,7 @@ mod helpers;
 mod day01;
 mod day02;
 mod day03;
+mod day04;
 
 fn main() {
     day01::task1("".to_string());
@@ -10,4 +11,6 @@ fn main() {
     day02::task2("".to_string());
     day03::task1("".to_string());
     day03::task2("".to_string());
+    day04::task1("".to_string());
+    day04::task2("".to_string());
 }

@@ -1,3 +1,11 @@
+trait IntoTuple2<T> {
+    fn into_tuple_2(&self) -> (T, T);
+}
+
+pub fn v2t<T: Copy>(from: Vec<T>) -> (T, T) {
+    (from[0], from[1])
+}
+
 pub mod test_helpers {
     use std::fs;
 

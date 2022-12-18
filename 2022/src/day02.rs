@@ -1,3 +1,5 @@
+use crate::helpers::v2t;
+
 enum Result {
     Wins,
     Loses,
@@ -126,11 +128,6 @@ pub fn task2(input: String) -> u32 {
             
             op.other_if_my_result(&(res.opposite())).score() + res.score()
         }).sum()
-}
-
-
-fn v2t<T: Copy>(from: Vec<T>) -> (T, T) {
-    (from[0], from[1])
 }
 
 #[cfg(test)]
