@@ -52,6 +52,20 @@ impl Rucksack {
     fn wrong_item(&self) -> &Item {
         self.a.items.intersection(&self.b.items).next().expect("No common item!")
     }
+
+    fn items(&self) -> HashSet<&Item> {
+        self.a.items.union(&self.b.items).collect::<HashSet<&Item>>()
+    }
+}
+
+trait First<T> {
+    fn first(&self) -> &T;
+}
+
+impl<T> First<T> for HashSet<T> {
+    fn first(&self) -> &T {
+        self.iter().next().unwrap()
+    }
 }
 
 pub fn task1(input: String) -> u32 {
@@ -66,6 +80,37 @@ pub fn task1(input: String) -> u32 {
         .collect();
     
     wrong_items.into_iter().map(Item::priority).sum()
+}
+
+fn find_badge(rucksacks: &[Rucksack]) -> &Item {
+    rucksacks
+        .iter()
+        .map(Rucksack::items)
+        .reduce(|r1, r2| {
+            let a = r1.intersection(&r2)
+                .collect::<HashSet<&&Item>>()
+                .into_iter()
+                .map(|item| { *item} )
+                .collect::<HashSet<&Item>>();
+            a
+        }).unwrap()
+        .first()
+}
+
+pub fn task2(input: String) -> u32 {
+    let rucksacks: Vec<Rucksack> = input
+        .split('\n')
+        .map(Rucksack::from)
+        .collect();
+
+    let groups = rucksacks
+        .chunks(3);
+
+    groups
+        .map(|rucksacks| {
+            find_badge(rucksacks).priority()
+        })
+        .sum()
 }
 
 #[cfg(test)]
@@ -83,4 +128,15 @@ mod test {
     fn test_01_input() {
         assert_eq!(7446, task1(load(3, 1, Input)));
     }
+
+    #[test]
+    fn test_02_sample() {
+        assert_eq!(70, task2(load(3, 1, Sample)));
+    }
+
+    #[test]
+    fn test_02_input() {
+        assert_eq!(2646, task2(load(3, 1, Input)));
+    }
+
 }

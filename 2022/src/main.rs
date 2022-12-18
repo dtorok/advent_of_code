@@ -9,4 +9,5 @@ fn main() {
     day02::task1("".to_string());
     day02::task2("".to_string());
     day03::task1("".to_string());
+    day03::task2("".to_string());
 }
