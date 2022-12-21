@@ -43,12 +43,21 @@ impl Stack {
         self.0.push(cr);
     }
 
+    fn push_n(&mut self, crs: Vec<Crate>) {
+        self.0.extend_from_slice(crs.as_slice())
+    }
+
     fn reverse(&mut self) {
         self.0.reverse();
     }
 
     fn pop(&mut self) -> Crate {
         self.0.pop().unwrap()
+    }
+
+    fn pop_n(&mut self, n: usize) -> Vec<Crate> {
+        let l = self.0.len();
+        self.0.split_off(l - n)
     }
 
     fn peep(&self) -> Option<&Crate> {
@@ -79,13 +88,6 @@ impl Cargo {
             });
     }
 
-    fn run_command(&mut self, cmd: &Command) {
-        for _ in 0..cmd.amount {
-            let cr = self.stacks[cmd.from].pop();
-            self.stacks[cmd.to].push(cr);
-        }
-    }
-
     fn get_top_crates(&self) -> Vec<&Crate> {
         self.stacks
             .iter()
@@ -106,6 +108,34 @@ impl Cargo {
     }
 }
 
+
+// ===
+// CRANES
+// ===
+trait Crane {
+    fn run_command(&self, cargo: &mut Cargo, cmd: &Command);
+}
+
+struct CrateMover9000();
+
+impl Crane for CrateMover9000 {
+    fn run_command(&self, cargo: &mut Cargo, cmd: &Command) {
+        for _ in 0..cmd.amount {
+            let cr = cargo.stacks[cmd.from].pop();
+            cargo.stacks[cmd.to].push(cr);
+        }
+    }
+}
+
+struct CrateMover9001();
+
+impl Crane for CrateMover9001 {
+    fn run_command(&self, cargo: &mut Cargo, cmd: &Command) {
+        let cranes = cargo.stacks[cmd.from].pop_n(cmd.amount as usize);
+        cargo.stacks[cmd.to].push_n(cranes);
+    }
+}
+
 struct Parser{}
 
 impl Parser {
@@ -119,7 +149,6 @@ impl Parser {
             let ch = line[n + 1];
 
             if left == '[' as u8 && ch != ' ' as u8 {
-                // cargo.stacks[i].push(Crate(ch as char))
                 let stack: &mut Stack = cargo.get_or_create_stack(i);
                 stack.push(Crate(ch as char));
             }
@@ -173,21 +202,25 @@ impl Parser {
     }
 }
 
-pub fn task1(input: String) -> String {
+fn run_task(input: String, crane: impl Crane) -> String {
     let mut iter = input.split("\n");
 
     let mut cargo = Parser::parse_cargo(&mut iter);
     let cmds = Parser::parse_commands(&mut iter);
 
     for cmd in cmds.iter() {
-        cargo.run_command(cmd);
+        crane.run_command(&mut cargo, cmd);
     }
 
     cargo.get_top_crates().iter().map(|Crate(ch)| ch).collect()
 }
 
+pub fn task1(input: String) -> String {
+    run_task(input, CrateMover9000{})
+}
+
 pub fn task2(input: String) -> String {
-    "".to_string()
+    run_task(input, CrateMover9001{})
 }
 
 
@@ -209,12 +242,12 @@ mod test {
 
     #[test]
     fn test_02_sample() {
-        assert_eq!("".to_string(), task2(load(5, 1, Sample)));
+        assert_eq!("MCD".to_string(), task2(load(5, 1, Sample)));
     }
 
     #[test]
     fn test_02_input() {
-        assert_eq!("".to_string(), task2(load(5, 1, Input)));
+        assert_eq!("FGLQJCMBD".to_string(), task2(load(5, 1, Input)));
     }
 
 }
