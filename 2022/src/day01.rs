@@ -26,22 +26,22 @@ mod test {
     use crate::helpers::test_helpers::InputType::{Sample, Input};
 
     #[test]
-    fn test() {
+    fn test_01_sample() {
         assert_eq!(24000, task1(load(1, 1, Sample)));
     }
     
     #[test]
-    fn test_input_01() {
+    fn test_01_input() {
         assert_eq!(71506, task1(load(1, 1, Input)));
     }
 
     #[test]
-    fn test_02() {
+    fn test_02_sample() {
         assert_eq!(45000, task2(load(1, 1, Sample)));
     }
 
     #[test]
-    fn test_input_02() {
+    fn test_02_input() {
         assert_eq!(209603, task2(load(1, 1, Input)));
     }
 }
