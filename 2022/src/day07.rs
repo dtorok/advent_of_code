@@ -1,5 +1,9 @@
 use std::iter::Peekable;
 
+const TASK1_SIZE_LIMIT: usize = 100000;
+const TASK2_DISK_SIZE: usize = 70000000;
+const TASK2_SPACE_REQUIRED: usize = 30000000;
+
 // ===
 // File
 // ===
@@ -39,15 +43,6 @@ impl<'a> Dir<'a> {
             comm_size: comm_size,
             file_entries: file_entries,
         }
-    }
-
-    fn dir_sizes_smaller_than(&self, limit: usize) -> usize {
-        self
-            .iter()
-            .filter_map(FileEntry::as_dir)
-            .filter(|d| d.comm_size <= limit)
-            .map(|d| d.comm_size)
-            .sum()
     }
 
     fn iter(&'a self) -> DirIterator<'a> {
@@ -241,11 +236,29 @@ impl Parser {
 // ===
 pub fn task1(input: String) -> usize {
     let root = Parser::parse(&mut input.lines().peekable(), "/");
-    root.dir_sizes_smaller_than(100000)
+
+    root
+        .iter()
+        .filter_map(FileEntry::as_dir)
+        .filter(|d| d.comm_size <= TASK1_SIZE_LIMIT)
+        .map(|d| d.comm_size)
+        .sum()
 }
 
-pub fn task2(_: String) -> usize {
-    todo!()
+pub fn task2(input: String) -> usize {
+    let root = Parser::parse(&mut input.lines().peekable(), "/");
+    let space_required = TASK2_SPACE_REQUIRED - (TASK2_DISK_SIZE - root.comm_size);
+
+    let mut dir_sizes = root
+        .iter()
+        .filter_map(FileEntry::as_dir)
+        .filter(|d| d.comm_size >= space_required)
+        .map(|d| d.comm_size)
+        .collect::<Vec<usize>>();
+
+    dir_sizes.sort();
+
+    dir_sizes[0]
 }
 
 
@@ -267,12 +280,12 @@ mod test {
 
     #[test]
     fn test_02_sample() {
-        assert_eq!(0, task2(load(7, 1, Sample)));
+        assert_eq!(24933642, task2(load(7, 1, Sample)));
     }
 
     #[test]
     fn test_02_input() {
-        assert_eq!(0, task2(load(7, 1, Input)));
+        assert_eq!(5883165, task2(load(7, 1, Input)));
     }
 
 }
