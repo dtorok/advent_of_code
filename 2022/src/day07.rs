@@ -21,7 +21,7 @@ impl<'a> File<'a> {
 }
 
 // ===
-// DIR
+// Dir
 // ===
 #[derive(Debug)]
 struct Dir<'a> {
@@ -41,28 +41,63 @@ impl<'a> Dir<'a> {
         }
     }
 
-    fn get_dir_entries(&self) -> Vec<&Dir<'a>> {
-        self.file_entries.iter().filter_map(|e| {
-            match e {
-                FileEntry::File(_) => None,
-                FileEntry::Dir(dir) => Some(dir)
-            }
-        }).collect()
-    }
-
     fn dir_sizes_smaller_than(&self, limit: usize) -> usize {
-        let mut num = 0;
-
-        if self.comm_size <= limit {
-            num += self.comm_size;
-        }
-
-        for dir in self.get_dir_entries() {
-            num += dir.dir_sizes_smaller_than(limit)
-        }
-
-        num
+        self
+            .iter()
+            .filter_map(FileEntry::as_dir)
+            .filter(|d| d.comm_size <= limit)
+            .map(|d| d.comm_size)
+            .sum()
     }
+
+    fn iter(&'a self) -> DirIterator<'a> {
+        DirIterator::new(self)
+    }
+}
+
+// ===
+// DirIterator
+// ===
+struct DirIterator<'a>
+{
+    iterators: Vec<std::slice::Iter<'a, FileEntry<'a>>>,
+}
+
+impl<'a> DirIterator<'a>
+{
+    fn new(root: &'a Dir<'a>) -> DirIterator<'a> {
+        let i = root.file_entries.iter();
+        DirIterator {
+            iterators: vec![i]
+        }
+    }
+}
+
+impl<'a> Iterator for DirIterator<'a> 
+{
+    type Item = &'a FileEntry<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        while let Some(last) = self.iterators.last_mut() {
+            let item = last.next();
+            match item {
+                None => {
+                    self.iterators.pop();
+                },
+                Some(FileEntry::File(_)) => {
+                    return item;
+                },
+                Some(FileEntry::Dir(dir)) => {
+                    self.iterators.push(dir.file_entries.iter());
+                    return item;
+                }
+
+            }
+        }
+
+        None
+    }
+
 }
 
 // ===
@@ -79,6 +114,13 @@ impl<'a> FileEntry<'a> {
         match self {
             FileEntry::File(file) => file.filesize,
             FileEntry::Dir(dir) => dir.comm_size
+        }
+    }
+
+    fn as_dir(&self) -> Option<&Dir<'a>> {
+        match &self {
+            FileEntry::File(_) => None,
+            FileEntry::Dir(dir) => Some(dir)
         }
     }
 }
@@ -107,13 +149,13 @@ impl<'a> Cmd<'a> {
 }
 
 // ===
-// IterLsOutput
+// LsOutputIterator
 // ===
-struct IterLsOutput<'a, 'b, I>(&'b mut Peekable<I>)
+struct LsOutputIterator<'a, 'b, I>(&'b mut Peekable<I>)
 where
     I: Iterator<Item=&'a str>;
 
-impl<'a, 'b, I> Iterator for IterLsOutput<'a, 'b, I>
+impl<'a, 'b, I> Iterator for LsOutputIterator<'a, 'b, I>
 where
    I: Iterator<Item=&'a str>
 {
@@ -139,13 +181,13 @@ where
 struct Parser();
 
 impl Parser {
-    fn parse_ls_output<'a, I>(input: &mut Peekable<I>) -> Vec<FileEntry<'a>>
+    fn parse_ls_files<'a, I>(input: &mut Peekable<I>) -> Vec<FileEntry<'a>>
     where
         I: Iterator<Item=&'a str>
     {
         let mut file_entries: Vec<FileEntry<'a>> = vec![];
 
-        for next in IterLsOutput(input) {
+        for next in LsOutputIterator(input) {
             let parts: Vec<&'a str> = next.split(" ").collect();
             if parts[0] == "dir" {
                 continue;
@@ -183,7 +225,7 @@ impl Parser {
                     file_entries.push(dir_entry);
                 }
                 Cmd::Ls => {
-                    let mut files = Self::parse_ls_output(input);
+                    let mut files = Self::parse_ls_files(input);
                     comm_size += files.iter().map(FileEntry::size).sum::<usize>();
                     file_entries.append(&mut files);
                 }
