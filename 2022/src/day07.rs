@@ -1,9 +1,12 @@
 use std::iter::Peekable;
 
-
+// ===
+// File
+// ===
 #[derive(Debug)]
 struct File<'a> {
-    // parent: Option<Box<FileEntry<'a>>>,
+    // name not used, but a file without a name?!?
+    #[allow(dead_code)]
     name: &'a str,
     filesize: usize,
 }
@@ -11,16 +14,19 @@ struct File<'a> {
 impl<'a> File<'a> {
     fn new(name: &'a str, filesize: usize) -> File<'a> {
         File {
-            // parent: parent,
             name: name,
             filesize: filesize
         }
     }
 }
 
+// ===
+// DIR
+// ===
 #[derive(Debug)]
 struct Dir<'a> {
-    // parent: Option<Box<FileEntry<'a>>>,
+    // name not used, but a dir without a name?!?
+    #[allow(dead_code)]
     name: &'a str,
     comm_size: usize,
     file_entries: Vec<FileEntry<'a>>
@@ -29,7 +35,6 @@ struct Dir<'a> {
 impl<'a> Dir<'a> {
     fn new(name: &'a str, comm_size: usize, file_entries: Vec<FileEntry<'a>>) -> Dir<'a> {
         Dir {
-            // parent: parent,
             name: name,
             comm_size: comm_size,
             file_entries: file_entries,
@@ -44,8 +49,25 @@ impl<'a> Dir<'a> {
             }
         }).collect()
     }
+
+    fn dir_sizes_smaller_than(&self, limit: usize) -> usize {
+        let mut num = 0;
+
+        if self.comm_size <= limit {
+            num += self.comm_size;
+        }
+
+        for dir in self.get_dir_entries() {
+            num += dir.dir_sizes_smaller_than(limit)
+        }
+
+        num
+    }
 }
 
+// ===
+// FileEntry
+// ===
 #[derive(Debug)]
 enum FileEntry<'a> {
     File(File<'a>),
@@ -53,16 +75,6 @@ enum FileEntry<'a> {
 }
 
 impl<'a> FileEntry<'a> {
-    // // fn new_file(parent: Option<Box<FileEntry<'a>>>, name: &'a str, size: usize) -> FileEntry<'a> {
-    fn new_file(name: &'a str, filesize: usize) -> FileEntry<'a> {
-        FileEntry::File(File::new(name, filesize))
-    }
-
-    // // fn new_dir(parent: Option<Box<FileEntry<'a>>>, name: &'a str, comm_size: usize, file_entries: &'a [FileEntry<'a>]) -> FileEntry<'a> {
-    fn new_dir(name: &'a str, comm_size: usize, file_entries: Vec<FileEntry<'a>>) -> FileEntry<'a> {
-        FileEntry::Dir(Dir::new(name, comm_size, file_entries))
-    }
-
     fn size(&self) -> usize {
         match self {
             FileEntry::File(file) => file.filesize,
@@ -71,122 +83,127 @@ impl<'a> FileEntry<'a> {
     }
 }
 
+// ===
+// Cmd
+// ===
 enum Cmd<'a> {
     Cd(&'a str),
     Ls,
 }
 
-fn parse_cmd<'a>(line: &'a str) -> Cmd<'a> {
-    let parts: &[&str] = &line.split(" ").collect::<Vec<&str>>();
-    match parts[0] {
-        "$" => 
-            match parts[1] {
-                "cd" => Cmd::Cd(parts[2]),
-                "ls" => Cmd::Ls,
-                _ => panic!("Unknown command: {} of \"{}\"", parts[1], line),
-            }
-        _ => panic!("Not a command: {}", line),
-    }
-}
-
-fn next_ls_output_line<'a, I>(input: &mut Peekable<I>) -> Option<&'a str>
-where 
-    I: Iterator<Item=&'a str>
-{
-    match input.peek() {
-        None => Option::None,
-        Some(&s) => {
-            dbg!(s);
-            if !s.starts_with("$") {
-                dbg!("$");
-                input.next()
-            } else {
-                None
-            }
+impl<'a> Cmd<'a> {
+    fn parse(line: &'a str) -> Cmd<'a> {
+        let parts: &[&str] = &line.split(" ").collect::<Vec<&str>>();
+        match parts[0] {
+            "$" =>
+                match parts[1] {
+                    "cd" => Cmd::Cd(parts[2]),
+                    "ls" => Cmd::Ls,
+                    _ => panic!("Unknown command: {} of \"{}\"", parts[1], line),
+                }
+            _ => panic!("Not a command: {}", line),
         }
     }
 }
 
-fn parse_ls_output<'a, I>(input: &mut Peekable<I>) -> Vec<FileEntry<'a>>
+// ===
+// IterLsOutput
+// ===
+struct IterLsOutput<'a, 'b, I>(&'b mut Peekable<I>)
 where
-    I: Iterator<Item=&'a str>
+    I: Iterator<Item=&'a str>;
+
+impl<'a, 'b, I> Iterator for IterLsOutput<'a, 'b, I>
+where
+   I: Iterator<Item=&'a str>
 {
-    let mut file_entries: Vec<FileEntry<'a>> = vec![];
+   type Item = &'a str;
 
-    while let Some(next) = next_ls_output_line(input) {
-        let parts: Vec<&'a str> = next.split(" ").collect();
-        if parts[0] == "dir" {
-            continue;
-        }
-
-        let (filesize, name) = (parts[0].parse::<usize>().expect(parts[1]), parts[1]);
-        file_entries.push(FileEntry::new_file(name, filesize));
-    }
-
-    file_entries
+   fn next(&mut self) -> Option<&'a str> {
+       match self.0.peek() {
+           None => Option::None,
+           Some(&s) => {
+               if !s.starts_with("$") {
+                   self.0.next()
+               } else {
+                   None
+               }
+           }
+       }
+   }
 }
 
-fn parse_input<'a, I>(input: &mut Peekable<I>, name: &'a str) -> Dir<'a> 
-where
-    I: Iterator<Item=&'a str>
-{
-    dbg!("Parsing", name);
+// ===
+// Parser
+// ===
+struct Parser();
 
-    let mut file_entries: Vec<FileEntry<'a>> = vec![];
-    let mut comm_size = 0;
+impl Parser {
+    fn parse_ls_output<'a, I>(input: &mut Peekable<I>) -> Vec<FileEntry<'a>>
+    where
+        I: Iterator<Item=&'a str>
+    {
+        let mut file_entries: Vec<FileEntry<'a>> = vec![];
 
-    while let Some(line) = input.next() {
-    // while let l = input.next() {
-    //     dbg!(&l);
-    //     let line = l.unwrap();
-        dbg!(line);
-        match parse_cmd(line) {
-            Cmd::Cd("..") => {
-                break;
-            }
-            Cmd::Cd("/") => {
+        for next in IterLsOutput(input) {
+            let parts: Vec<&'a str> = next.split(" ").collect();
+            if parts[0] == "dir" {
                 continue;
             }
-            Cmd::Cd(dirname) => {
-                let dir = parse_input(input, dirname);
-                let dir_entry = FileEntry::Dir(dir);
-                
-                comm_size += dir_entry.size();
-                file_entries.push(dir_entry);
-            }
-            Cmd::Ls => {
-                let mut files = parse_ls_output(input);
-                comm_size += files.iter().map(FileEntry::size).sum::<usize>();
-                file_entries.append(&mut files);
-            }
+
+            let (filesize, name) = (parts[0].parse::<usize>().expect(parts[1]), parts[1]);
+            file_entries.push(
+                FileEntry::File(File::new(name, filesize))
+            )
         }
-    };
 
-    Dir::new(name, comm_size, file_entries)
-}
-
-fn dir_sizes_smaller_than(root: &Dir, limit: usize) -> usize {
-    let mut num = 0;
-
-    if root.comm_size <= limit {
-        num += root.comm_size;
+        file_entries
     }
 
-    for dir in root.get_dir_entries() {
-        num += dir_sizes_smaller_than(dir, limit)
-    }
+    fn parse<'a, I>(input: &mut Peekable<I>, name: &'a str) -> Dir<'a> 
+    where
+        I: Iterator<Item=&'a str>
+    {
+        let mut file_entries: Vec<FileEntry<'a>> = vec![];
+        let mut comm_size = 0;
 
-    num
+        while let Some(line) = input.next() {
+            match Cmd::parse(line) {
+                Cmd::Cd("..") => {
+                    break;
+                }
+                Cmd::Cd("/") => {
+                    continue;
+                }
+                Cmd::Cd(dirname) => {
+                    let dir = Self::parse(input, dirname);
+                    let dir_entry = FileEntry::Dir(dir);
+
+                    comm_size += dir_entry.size();
+                    file_entries.push(dir_entry);
+                }
+                Cmd::Ls => {
+                    let mut files = Self::parse_ls_output(input);
+                    comm_size += files.iter().map(FileEntry::size).sum::<usize>();
+                    file_entries.append(&mut files);
+                }
+            }
+        };
+
+        Dir::new(name, comm_size, file_entries)
+    }
 }
 
+// ===
+// TASKS
+// ===
 pub fn task1(input: String) -> usize {
-    // dbg!(input.lines().collect::<Vec<&str>>());
-    let root = parse_input(&mut input.lines().peekable(), "/");
-    dir_sizes_smaller_than(&root, 100000)
+    let root = Parser::parse(&mut input.lines().peekable(), "/");
+    root.dir_sizes_smaller_than(100000)
 }
 
-pub fn task2(input: String) -> usize {
-    0
+pub fn task2(_: String) -> usize {
+    todo!()
 }
 
 
