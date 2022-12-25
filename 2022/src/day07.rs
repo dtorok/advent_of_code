@@ -45,7 +45,7 @@ impl<'a> Dir<'a> {
         }
     }
 
-    fn iter(&'a self) -> DirIterator<'a> {
+    fn iter<'d>(&'a self) -> DirIterator<'a, 'd> {
         DirIterator::new(self)
     }
 }
@@ -53,14 +53,14 @@ impl<'a> Dir<'a> {
 // ===
 // DirIterator
 // ===
-struct DirIterator<'a>
+struct DirIterator<'a, 'd>
 {
-    iterators: Vec<std::slice::Iter<'a, FileEntry<'a>>>,
+    iterators: Vec<std::slice::Iter<'d, FileEntry<'a>>>,
 }
 
-impl<'a> DirIterator<'a>
+impl<'a, 'd> DirIterator<'a, 'd>
 {
-    fn new(root: &'a Dir<'a>) -> DirIterator<'a> {
+    fn new(root: &'d Dir<'a>) -> DirIterator<'a, 'd> {
         let i = root.file_entries.iter();
         DirIterator {
             iterators: vec![i]
@@ -68,9 +68,9 @@ impl<'a> DirIterator<'a>
     }
 }
 
-impl<'a> Iterator for DirIterator<'a> 
+impl<'a, 'd> Iterator for DirIterator<'a, 'd>
 {
-    type Item = &'a FileEntry<'a>;
+    type Item = &'d FileEntry<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         while let Some(last) = self.iterators.last_mut() {
