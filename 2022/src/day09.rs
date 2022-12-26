@@ -78,30 +78,41 @@ impl Movement {
 // Rope
 // ===
 struct Rope {
-    head: Coord,
-    tail: Coord,
+    knots: Vec<Coord>,
     tail_visited: HashSet<Coord>
 }
 
 impl Rope {
-    fn new() -> Rope {
+    fn new(num_knots: usize) -> Rope {
         let start = Coord(0, 0);
 
         let mut tail_visited = HashSet::new();
         tail_visited.insert(start.clone());
 
         Rope {
-            head: start.clone(),
-            tail: start.clone(),
+            knots: vec![start; num_knots],
             tail_visited: tail_visited,
         }
     }
 
     fn move_head_by(&mut self, movement: Movement) {
+        let l = self.knots.len();
+
         for _ in 0..movement.1 {
-            self.head.move_by(&movement.0);
-            self.tail.move_towards(&self.head);
-            self.tail_visited.insert(self.tail.clone());
+            self.knots[0].move_by(&movement.0);
+            for i in 1..l {
+                let last_knot = self.knots[i - 1].clone();
+                let curr_knot = &mut self.knots[i];
+                curr_knot.move_towards(&last_knot);
+            }
+
+            self.tail_visited.insert(self.knots[l - 1].clone());
+        }
+    }
+
+    fn move_head(&mut self, movements: impl Iterator<Item=Movement>) {
+        for movement in movements {
+            self.move_head_by(movement);
         }
     }
 }
@@ -110,18 +121,21 @@ impl Rope {
 // Tasks
 // ===
 pub fn task1(input: String) -> usize {
-    let movements = input.lines().map(Movement::parse);
-    let mut rope = Rope::new();
-
-    for movement in movements {
-        rope.move_head_by(movement);
-    }
+    let mut rope = Rope::new(2);
+    rope.move_head(
+        input.lines().map(Movement::parse)
+    );
 
     rope.tail_visited.len()
 }
 
-pub fn task2(_: String) -> usize {
-    todo!()
+pub fn task2(input: String) -> usize {
+    let mut rope = Rope::new(10);
+    rope.move_head(
+        input.lines().map(Movement::parse)
+    );
+
+    rope.tail_visited.len()
 }
 
 #[cfg(test)]
@@ -142,12 +156,13 @@ mod test {
 
     #[test]
     fn test_02_sample() {
-        assert_eq!(0, task2(load(9, 1, Sample)));
+        assert_eq!(1, task2(load(9, 1, Sample)));
+        assert_eq!(36, task2(load(9, 2, Sample)));
     }
 
     #[test]
     fn test_02_input() {
-        assert_eq!(0, task2(load(9, 1, Input)));
+        assert_eq!(2460, task2(load(9, 1, Input)));
     }
 
 }
