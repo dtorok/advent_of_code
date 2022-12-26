@@ -125,7 +125,7 @@ mod test {
 
     #[test]
     fn test_01_input() {
-        assert_eq!(0, task1(load(10, 1, Input)));
+        assert_eq!(13920, task1(load(10, 1, Input)));
     }
 
     #[test]
