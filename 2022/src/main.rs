@@ -8,6 +8,7 @@ mod day06;
 mod day07;
 mod day08;
 mod day09;
+mod day10;
 
 fn main() {
     day01::task1("".to_string());
@@ -28,4 +29,6 @@ fn main() {
     day08::task2("".to_string());
     day09::task1("".to_string());
     day09::task2("".to_string());
+    day10::task1("".to_string());
+    day10::task2("".to_string());
 }
