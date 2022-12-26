@@ -1,4 +1,4 @@
-use std::{collections::HashSet, ops::Range, iter::Rev};
+use std::{collections::HashSet};
 
 #[derive(Debug)]
 struct Grid {
