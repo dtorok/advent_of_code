@@ -1,6 +1,7 @@
 use std::{collections::VecDeque, vec};
+use num::integer::lcm;
 
-type Item = usize;
+type Item = u128;
 
 struct Throw {
     to_monkey: usize,
@@ -12,15 +13,15 @@ struct MonkeyNum(usize);
 type MonkeyAction = Box<dyn Fn(Item) -> MonkeyNum>;
 
 enum MonkeyOperation {
-    Add(usize),
-    Mul(usize),
-    Pow(usize),
+    Add(u128),
+    Mul(u128),
+    Pow(u128),
 }
 
 impl MonkeyOperation {
     fn parse(value: &str) -> MonkeyOperation {
         let parts = value.split(" ").collect::<Vec<&str>>();
-        let p = |v: &str| v.parse::<usize>().expect("op_value should be a number");
+        let p = |v: &str| v.parse::<u128>().expect("op_value should be a number");
 
         match (parts[0], parts[1]) {
             ("+", "old") => MonkeyOperation::Mul(2),
@@ -31,7 +32,7 @@ impl MonkeyOperation {
         }
     }
 
-    fn execute(&self, input: usize) -> usize {
+    fn execute(&self, input: u128) -> u128 {
         match self {
             MonkeyOperation::Add(value) => input + value,
             MonkeyOperation::Mul(value) => input * value,
@@ -45,7 +46,9 @@ struct Monkey
     items: VecDeque<Item>,
     operation: MonkeyOperation,
     action: MonkeyAction,
-    num_obs: usize
+    num_obs: usize,
+    get_bored: bool,
+    divisible_by: u128,
 }
 
 impl Monkey
@@ -57,12 +60,12 @@ impl Monkey
             None
         }
     }
-    fn parse_next<'a, I>(lines: &mut I) -> Option<Monkey>
+    fn parse_next<'a, I>(lines: &mut I, get_bored: bool) -> Option<Monkey>
     where
         I: Iterator<Item=&'a str>
     {
         let mut starting_items: Vec<Item> = vec![];
-        let mut divisible_by = 0;
+        let mut divisible_by: u128 = 0;
         let mut monkey_operation = MonkeyOperation::Add(0);
         let mut if_true_monkey = 0;
         let mut if_false_monkey = 0;
@@ -81,7 +84,7 @@ impl Monkey
             } else if let Some(value) = Self::test_start_with(line, "Operation: new = old ") {
                 monkey_operation = MonkeyOperation::parse(value);
             } else if let Some(value) = Self::test_start_with(line, "Test: divisible by ") {
-                divisible_by = value.parse::<usize>().expect("divisible_by should be a number");
+                divisible_by = value.parse::<u128>().expect("divisible_by should be a number");
             } else if let Some(value) = Self::test_start_with(line, "If true: throw to monkey ") {
                 if_true_monkey = value.parse::<usize>().expect("if_true_monkey should be a number");
             } else if let Some(value) = Self::test_start_with(line, "If false: throw to monkey ") {
@@ -106,7 +109,9 @@ impl Monkey
             items: VecDeque::from(starting_items),
             operation: monkey_operation,
             action: Box::new(action),
-            num_obs: 0
+            num_obs: 0,
+            get_bored: get_bored,
+            divisible_by: divisible_by,
         })
     }
 
@@ -115,11 +120,13 @@ impl Monkey
 
         while let Some(item) = self.items.pop_front() {
             // observation
-            let mut item = self.operation.execute(item);
+            let mut item: u128 = self.operation.execute(item);
             self.num_obs += 1;
 
             // bored
-            item = item / 3;
+            if self.get_bored {
+                item = item / 3;
+            }
 
             // test
             let to_monkey = (self.action)(item);
@@ -136,6 +143,12 @@ impl Monkey
         self.items.push_back(item);
     }
 
+    fn mod_items_by(&mut self, d: u128) {
+        for item in self.items.iter_mut() {
+            *item %= d;
+        }
+    }
+
 }
 
 
@@ -146,11 +159,11 @@ struct Tribe
 
 impl Tribe
 {
-    fn parse(input: String) -> Tribe {
+    fn parse(input: String, get_bored: bool) -> Tribe {
         let mut lines = input.lines();
 
         let mut monkeys = vec![];
-        while let Some(monkey) = Monkey::parse_next(&mut lines) {
+        while let Some(monkey) = Monkey::parse_next(&mut lines, get_bored) {
             monkeys.push(monkey);
         }
 
@@ -160,7 +173,6 @@ impl Tribe
     }
 
     fn round(&mut self) {
-        // for monkey in self.monkeys.iter_mut() {
         for i in 0..self.monkeys.len() {
             let monkey = &mut self.monkeys[i];
             let throws = monkey.round();
@@ -170,10 +182,16 @@ impl Tribe
             }
         }
     }
+
+    fn mod_items_by(&mut self, d: u128) {
+        for monkey in self.monkeys.iter_mut() {
+            monkey.mod_items_by(d);
+        }
+    }
 }
 
 pub fn task1(input: String) -> usize {
-    let mut tribe = Tribe::parse(input);
+    let mut tribe = Tribe::parse(input, true);
 
     for _ in 0..20 {
         tribe.round();
@@ -186,8 +204,28 @@ pub fn task1(input: String) -> usize {
     num_obs[0] * num_obs[1]
 }
 
-pub fn task2(_: String) -> usize {
-    todo!()
+pub fn task2(input: String) -> usize {
+    let mut tribe = Tribe::parse(input, false);
+
+    let monkey_divs = tribe.monkeys
+        .iter()
+        .map(|m| m.divisible_by);
+
+    let mut monkey_lcm = 1;
+    for d in monkey_divs {
+        monkey_lcm = lcm(monkey_lcm, d);
+    }
+
+    for _ in 0..10000 {
+        tribe.round();
+        tribe.mod_items_by(monkey_lcm);
+    }
+
+    let mut num_obs: Vec<usize> = tribe.monkeys.iter().map(|m| m.num_obs).collect();
+    num_obs.sort();
+    num_obs.reverse();
+
+    num_obs[0] * num_obs[1]
 }
 
 #[cfg(test)]
@@ -208,12 +246,12 @@ mod test {
 
     #[test]
     fn test_02_sample() {
-        assert_eq!(0, task2(load(11, 1, Sample)));
+        assert_eq!(2713310158, task2(load(11, 1, Sample)));
     }
 
     #[test]
     fn test_02_input() {
-        assert_eq!(0, task2(load(11, 1, Input)));
+        assert_eq!(15305381442, task2(load(11, 1, Input)));
     }
 
 }
