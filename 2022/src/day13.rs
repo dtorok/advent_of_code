@@ -2,7 +2,7 @@ use std::cmp::{max, Ordering};
 use serde::Deserialize;
 
 
-#[derive(Deserialize, Debug, Eq)]
+#[derive(Deserialize, Debug, Eq, Clone)]
 #[serde(untagged)]
 enum Packet {
     Integer(usize),
@@ -119,8 +119,26 @@ pub fn task1(input: String) -> usize {
     cnt
 }
 
-pub fn task2(_: String) -> usize {
-    todo!()
+pub fn task2(input: String) -> usize {
+    let p2 = Packet::List(vec![Packet::Integer(2)]);
+    let p6 = Packet::List(vec![Packet::Integer(6)]);
+
+    let mut lines = input.lines();
+    let mut packets: Vec<Packet> = PacketParserIterator(&mut lines).collect();
+
+    packets.push(p2.clone());
+    packets.push(p6.clone());
+
+    packets.sort();
+
+    let mut result = 1;
+    for (i, p) in packets.iter().enumerate() {
+        if *p == p2 || *p == p6 {
+            result *= i + 1;
+        }
+    }
+
+    result
 }
 
 #[cfg(test)]
@@ -141,12 +159,12 @@ mod test {
 
     #[test]
     fn test_02_sample() {
-        assert_eq!(0, task2(load(13, 1, Sample)));
+        assert_eq!(140, task2(load(13, 1, Sample)));
     }
 
     #[test]
     fn test_02_input() {
-        assert_eq!(0, task2(load(13, 1, Input)));
+        assert_eq!(24969, task2(load(13, 1, Input)));
     }
 
 }
