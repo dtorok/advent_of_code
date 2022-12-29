@@ -2,37 +2,28 @@ use std::cmp::{max, Ordering};
 use serde::Deserialize;
 
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Eq)]
 #[serde(untagged)]
 enum Packet {
     Integer(usize),
     List(Vec<Packet>),
 }
 
-impl Packet {
-    fn parse<'a>(input: &mut impl Iterator<Item=&'a str>) -> Option<Packet> {
-        serde_json::from_str(input.filter(|&s| s != "").next()?).ok()
+struct PacketParserIterator<'a, I: Iterator<Item=&'a str>>(&'a mut I);
+
+impl<'a, I: Iterator<Item=&'a str>> Iterator for PacketParserIterator<'a, I> {
+    type Item = Packet;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        serde_json::from_str(self.0.filter(|&s| s != "").next()?).ok()
     }
 }
 
-#[derive(Debug)]
-struct Signal {
-    left: Packet,
-    right: Packet,
-}
-
-impl Signal {
-    fn parse<'a>(input: &mut impl Iterator<Item=&'a str>) -> Option<Signal> {
-        Some(Signal { 
-            left: Packet::parse(input)?,
-            right: Packet::parse(input)?,
-        })
-    }
-
-    fn compare_order(left: &Packet, right: &Packet) -> Ordering {
+impl Ord for Packet {
+    fn cmp(&self, other: &Self) -> Ordering {
         use Packet::{Integer, List};
 
-        match (left, right) {
+        match (self, other) {
             (Integer(v_left), Integer(v_right)) if v_left < v_right => {
                 Ordering::Less
             }
@@ -50,7 +41,7 @@ impl Signal {
                     } else if l_right.len() <= i {
                         return Ordering::Greater;
                     } else {
-                        let c = Signal::compare_order(&l_left[i], &l_right[i]);
+                        let c = l_left[i].cmp(&l_right[i]);
                         if !c.is_eq() {
                             return c;
                         }
@@ -60,19 +51,56 @@ impl Signal {
                 Ordering::Equal
             }
             (List(_), Integer(v_right)) => {
-                Signal::compare_order(left, &Packet::List(vec![Packet::Integer(*v_right)]))
+                self.cmp(&Packet::List(vec![Packet::Integer(*v_right)]))
             }
             (Integer(v_left), List(_)) => {
-                Signal::compare_order(&Packet::List(vec![Packet::Integer(*v_left)]), right)
+                let p = Packet::List(vec![Packet::Integer(*v_left)]);
+                p.cmp(other)
             }
         }
     }
+}
 
-    fn check_order(&self) -> Ordering {
-        let left = &self.left;
-        let right = &self.right;
+impl PartialOrd for Packet {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
+}
 
-        Signal::compare_order(left, right)
+impl PartialEq for Packet {
+    fn eq(&self, other: &Self) -> bool {
+        self.cmp(other).is_eq()
+    }
+}
+
+#[derive(Debug)]
+struct Signal {
+    left: Packet,
+    right: Packet,
+}
+
+impl Signal {
+    fn is_in_order(&self) -> bool {
+        self.left < self.right
+    }
+}
+
+struct SignalParserIterator<'a, I: Iterator<Item=&'a str>>(PacketParserIterator<'a, I>);
+
+impl<'a, I: Iterator<Item=&'a str>> SignalParserIterator<'a, I> {
+    fn from(input: &'a mut I) -> SignalParserIterator<'a, I> {
+        SignalParserIterator(PacketParserIterator(input))
+    }
+}
+
+impl<'a, I: Iterator<Item=&'a str>> Iterator for SignalParserIterator<'a, I> {
+    type Item = Signal;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        Some(Signal {
+            left: self.0.next()?,
+            right: self.0.next()?,
+        })
     }
 }
 
@@ -81,8 +109,8 @@ pub fn task1(input: String) -> usize {
 
     let mut cnt = 0;
     let mut i = 1;
-    while let Some(signal) = Signal::parse(&mut lines) {
-        if signal.check_order().is_le() {
+    for signal in SignalParserIterator::from(&mut lines) {
+        if signal.is_in_order() {
             cnt += i;
         }
         i += 1;
