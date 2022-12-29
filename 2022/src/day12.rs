@@ -97,19 +97,32 @@ impl Map {
         Map { positions, size: coord }
     }
 
-    fn get_start(&self) -> &Position {
+    fn get_position(&self, cond: impl Fn(&&Position) -> bool) -> &Position {
         self.positions
             .values()
-            .filter(|p| p.start)
+            .filter(cond)
             .next()
             .expect("Start not found")
     }
 
-    fn find_shortest_path<'a>(&'a self) -> Option<Path<'a>> {
+    fn get_start(&self) -> &Position {
+        self.get_position(|p| p.start)
+    }
+
+    fn get_end(&self) -> &Position {
+        self.get_position(|p| p.end)
+    }
+
+    fn find_shortest_path<'a>(
+        &'a self,
+        start: &'a Position,
+        fn_step_condition: impl Fn(&Position, &Position) -> bool,
+        fn_end_condition: impl Fn(&Path) -> bool,
+    ) -> Option<Path<'a>> {
         let mut visited_positions: HashSet<&Coord> = HashSet::new();
         let mut next_paths: VecDeque<Path> = VecDeque::new();
 
-        next_paths.push_back(Path::new(self.get_start()));
+        next_paths.push_back(Path::new(start));
 
         while let Some(path) = next_paths.pop_front() {
             if visited_positions.contains(&path.current_position.coord) {
@@ -117,19 +130,18 @@ impl Map {
             }
             visited_positions.insert(&path.current_position.coord);
 
-            if path.current_position.end {
+            if fn_end_condition(&path) {
                 return Some(path);
             }
 
             for coord in path.current_position.possible_next_coords(&self.size) {
                 let pos = self.positions.get(&coord).unwrap();
-                if pos.height > path.current_position.height + 1 {
-                    continue;
+                if fn_step_condition(path.current_position, pos) {
+                    next_paths.push_back(Path {
+                        current_position: pos,
+                        number_of_steps: path.number_of_steps + 1,
+                    });
                 }
-                next_paths.push_back(Path {
-                    current_position: pos,
-                    number_of_steps: path.number_of_steps + 1,
-                });
             }
         }
 
@@ -139,12 +151,22 @@ impl Map {
 
 pub fn task1(input: String) -> usize {
     let map = Map::parse(input);
-    let path = map.find_shortest_path();
+    let path = map.find_shortest_path(
+        map.get_start(),
+        |curr, next| { next.height <= curr.height + 1 },
+        |path| { path.current_position.end },
+    );
     path.expect("No path found").number_of_steps
 }
 
-pub fn task2(_: String) -> usize {
-    todo!()
+pub fn task2(input: String) -> usize {
+    let map = Map::parse(input);
+    let path = map.find_shortest_path(
+        map.get_end(),
+        |curr, next| { next.height >= curr.height - 1 },
+        |path| { path.current_position.height == 0 },
+    );
+    path.expect("No path found").number_of_steps
 }
 
 #[cfg(test)]
@@ -165,12 +187,12 @@ mod test {
 
     #[test]
     fn test_02_sample() {
-        assert_eq!(0, task2(load(12, 1, Sample)));
+        assert_eq!(29, task2(load(12, 1, Sample)));
     }
 
     #[test]
     fn test_02_input() {
-        assert_eq!(0, task2(load(12, 1, Input)));
+        assert_eq!(386, task2(load(12, 1, Input)));
     }
 
 }
