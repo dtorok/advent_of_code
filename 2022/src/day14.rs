@@ -256,16 +256,12 @@ pub fn task1(input: String) -> usize {
     let mut map = Map::from(input.lines().map(Path::parse).collect::<Vec<Path>>())
         .expect("creation failed");
 
-    println!("Bdefore:\n{}", &map);
-
     let mut cnt = 0;
     let mut res: Result<(), CoordError> = Ok(());
     while res.is_ok() {
         cnt += 1;
         res = map.move_sand(&Coord::new(0, 500));
     }
-
-    println!("After:\n{}", &map);
 
     cnt - 1
 }
@@ -287,7 +283,7 @@ mod test {
 
     #[test]
     fn test_01_input() {
-        assert_eq!(0, task1(load(14, 1, Input)));
+        assert_eq!(832, task1(load(14, 1, Input)));
     }
 
     #[test]
