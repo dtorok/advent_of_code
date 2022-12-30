@@ -12,6 +12,7 @@ mod day10;
 mod day11;
 mod day12;
 mod day13;
+mod day14;
 
 fn main() {
     day01::task1("".to_string());
@@ -40,4 +41,6 @@ fn main() {
     day12::task2("".to_string());
     day13::task1("".to_string());
     day13::task2("".to_string());
+    day14::task1("".to_string());
+    day14::task2("".to_string());
 }
