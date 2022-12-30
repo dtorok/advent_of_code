@@ -25,28 +25,17 @@ impl Coord {
 #[derive(Debug)]
 struct Path {
     coords: Vec<Coord>,
-    #[allow(dead_code)]
-    bb_min: Coord,
-    #[allow(dead_code)]
-    bb_max: Coord,
 }
 
 impl Path {
     fn parse(input: &str) -> Path {
         let mut coords: Vec<Coord> = vec![];
-        let mut bb_min = Coord::new(0, 500);
-        let mut bb_max = Coord::new(0, 500);
 
         for coord in input.split(" -> ").map(Coord::parse) {
-            bb_min.row = min(bb_min.row, coord.row);
-            bb_min.col = min(bb_min.col, coord.col);
-            bb_max.row = max(bb_max.row, coord.row);
-            bb_max.col = max(bb_max.col, coord.col);
-
             coords.push(coord);
         }
 
-        Path { coords, bb_min, bb_max }
+        Path { coords }
     }
 }
 
