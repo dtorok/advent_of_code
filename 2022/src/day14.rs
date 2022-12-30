@@ -1,8 +1,8 @@
-use std::{cmp::{max, min}, fmt::Display};
+use std::{cmp::{max, min}, fmt::Display, collections::HashMap};
 
 use num::abs;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Hash, PartialEq, Eq)]
 struct Coord {
     row: i32,
     col: i32
@@ -81,7 +81,7 @@ enum CoordError {
 }
 
 struct Map {
-    grid: Vec<Vec<MapPoint>>,
+    points: HashMap<Coord, MapPoint>,
     bb_min: Coord,
     bb_max: Coord,
 }
@@ -90,7 +90,7 @@ impl Map {
     fn from(paths: Vec<Path>) -> Result<Map, CoordError> {
         let (bb_min, bb_max) = Self::get_bb(&paths);
         let mut map = Map {
-            grid: Self::create_grid(&bb_min, &bb_max),
+            points: HashMap::new(),
             bb_min,
             bb_max,
         };
@@ -133,7 +133,7 @@ impl Map {
         Ok(())
     }
 
-    fn coord2indices(&self, coord: &Coord) -> Result<(usize, usize), CoordError> {
+    fn check_bounds(&self, coord: &Coord) -> Result<(), CoordError> {
         if coord.row < self.bb_min.row
             || coord.col < self.bb_min.col
             || coord.row > self.bb_max.row
@@ -141,29 +141,23 @@ impl Map {
         {
             Err(CoordError::OutOfBounds(coord.clone()))
         } else {
-            Ok((
-                (coord.row - self.bb_min.row) as usize,
-                (coord.col - self.bb_min.col) as usize
-            ))
+            Ok(())
         }
     }
 
     fn set(&mut self, coord: &Coord, mp: MapPoint) -> Result<(), CoordError>{
-        let (row, col) = self.coord2indices(coord)?;
-        self.grid[row][col] = mp;
+        self.points.insert(coord.clone(), mp);
         Ok(())
     }
 
     fn at(&self, coord: &Coord) -> Result<&MapPoint, CoordError> {
-        let (row, col) = self.coord2indices(coord)?;
-        Ok(&self.grid[row][col])
-    }
+        self.check_bounds(coord)?;
 
-    fn create_grid(bb_min: &Coord, bb_max: &Coord) -> Vec<Vec<MapPoint>> {
-        let rows = (bb_max.row - bb_min.row + 1) as usize;
-        let cols = (bb_max.col - bb_min.col + 1) as usize;
-
-        vec![vec![MapPoint::Air; cols]; rows]
+        if let Some(mp) = self.points.get(coord) {
+            Ok(mp)
+        } else {
+            Ok(&MapPoint::Air)
+        }
     }
 
     fn get_bb(paths: &Vec<Path>) -> (Coord, Coord) {
@@ -240,8 +234,9 @@ impl Map {
 
 impl Display for Map {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for row in self.grid.iter() {
-            for mp in row {
+        for row in self.bb_min.row..self.bb_max.row {
+            for col in self.bb_min.col..self.bb_max.col {
+                let mp = self.at(&Coord::new(row, col)).unwrap();
                 write!(f, "{}", mp)?
             }
 
