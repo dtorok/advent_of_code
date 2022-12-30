@@ -87,7 +87,7 @@ struct Map {
 }
 
 impl Map {
-    fn from(paths: Vec<Path>) -> Result<Map, CoordError> {
+    fn from(paths: Vec<Path>) -> Map {
         let (bb_min, bb_max) = Self::get_bb(&paths);
         let mut map = Map {
             points: HashMap::new(),
@@ -102,17 +102,17 @@ impl Map {
 
             for coord in path.coords {
                 if let Some(lc) = last_coord {
-                    map.draw_line(&lc, &coord)?;
+                    map.draw_line(&lc, &coord);
                 }
 
                 last_coord = Some(coord);
             }
         }
 
-        Ok(map)
+        map
     }
 
-    fn draw_line(&mut self, from: &Coord, to: &Coord) -> Result<(), CoordError> {
+    fn draw_line(&mut self, from: &Coord, to: &Coord) {
         let d_row = to.row - from.row;
         let d_col = to.col - from.col;
         let d = max(abs(d_row), abs(d_col));
@@ -120,17 +120,15 @@ impl Map {
         let dt_row: f32 = (d_row as f32) / (d as f32);
         let dt_col: f32 = (d_col as f32) / (d as f32);
 
-        self.set(from, MapPoint::Rock)?;
+        self.set(from, MapPoint::Rock);
 
         for i in 0..d {
             let row = ((from.row as f32) + dt_row * (i as f32)) as i32;
             let col = ((from.col as f32) + dt_col * (i as f32)) as i32;
-            self.set(&Coord::new(row, col), MapPoint::Rock)?;
+            self.set(&Coord::new(row, col), MapPoint::Rock);
         }
 
-        self.set(to, MapPoint::Rock)?;
-
-        Ok(())
+        self.set(to, MapPoint::Rock);
     }
 
     fn check_bounds(&self, coord: &Coord) -> Result<(), CoordError> {
@@ -145,9 +143,8 @@ impl Map {
         }
     }
 
-    fn set(&mut self, coord: &Coord, mp: MapPoint) -> Result<(), CoordError>{
+    fn set(&mut self, coord: &Coord, mp: MapPoint) {
         self.points.insert(coord.clone(), mp);
-        Ok(())
     }
 
     fn at(&self, coord: &Coord) -> Result<&MapPoint, CoordError> {
@@ -178,7 +175,11 @@ impl Map {
 
     /// Adds and moves a unit of sand
     fn move_sand(&mut self, coord: &Coord) -> Result<(), CoordError> {
-        self.set(coord, MapPoint::Sand)?;
+        if !self.at(coord)?.is_air() {
+            return Err(CoordError::HitSolid);
+        }
+
+        self.set(coord, MapPoint::Sand);
 
         let mut coord = Ok(coord.clone());
 
@@ -222,8 +223,8 @@ impl Map {
 
     fn step_sand_if_air(&mut self, coord: &Coord, new_coord: Coord) -> Result<Coord, CoordError> {
         if self.at(&new_coord)?.is_air() {
-            self.set(coord, MapPoint::Air)?;
-            self.set(&new_coord, MapPoint::Sand)?;
+            self.set(coord, MapPoint::Air);
+            self.set(&new_coord, MapPoint::Sand);
 
             Ok(new_coord)
         } else {
@@ -234,8 +235,8 @@ impl Map {
 
 impl Display for Map {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        for row in self.bb_min.row..self.bb_max.row {
-            for col in self.bb_min.col..self.bb_max.col {
+        for row in self.bb_min.row..=self.bb_max.row {
+            for col in self.bb_min.col..=self.bb_max.col {
                 let mp = self.at(&Coord::new(row, col)).unwrap();
                 write!(f, "{}", mp)?
             }
@@ -248,9 +249,7 @@ impl Display for Map {
 }
 
 pub fn task1(input: String) -> usize {
-    let mut map = Map::from(input.lines().map(Path::parse).collect::<Vec<Path>>())
-        .expect("creation failed");
-
+    let mut map = Map::from(input.lines().map(Path::parse).collect::<Vec<Path>>());
     let mut cnt = 0;
     let mut res: Result<(), CoordError> = Ok(());
     while res.is_ok() {
@@ -261,8 +260,24 @@ pub fn task1(input: String) -> usize {
     cnt - 1
 }
 
-pub fn task2(_: String) -> usize {
-    todo!()
+pub fn task2(input: String) -> usize {
+    let mut paths = input.lines().map(Path::parse).collect::<Vec<Path>>();
+    let (bb_min, bb_max) = Map::get_bb(&paths);
+
+    paths.push(Path{
+        // alright, alright, the -300/+300 is a bit hacky
+        coords: vec![Coord::new(bb_max.row + 2, bb_min.col - 300), Coord::new(bb_max.row + 2, bb_max.col + 300)]
+    });
+    let mut map = Map::from(paths);
+
+    let mut cnt = 0;
+    let mut res: Result<(), CoordError> = Ok(());
+    while res.is_ok() {
+        cnt += 1;
+        res = map.move_sand(&Coord::new(0, 500));
+    }
+
+    cnt - 1
 }
 
 #[cfg(test)]
@@ -283,12 +298,12 @@ mod test {
 
     #[test]
     fn test_02_sample() {
-        assert_eq!(0, task2(load(14, 1, Sample)));
+        assert_eq!(93, task2(load(14, 1, Sample)));
     }
 
     #[test]
     fn test_02_input() {
-        assert_eq!(0, task2(load(14, 1, Input)));
+        assert_eq!(27601, task2(load(14, 1, Input)));
     }
 
 }
